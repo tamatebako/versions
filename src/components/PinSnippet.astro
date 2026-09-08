@@ -1,0 +1,81 @@
+---
+interface Snippet {
+  hint: string;
+  code: string;
+}
+
+interface Props {
+  snippets: Snippet[];
+}
+
+const { snippets } = Astro.props;
+---
+
+<div class="pins">
+  {
+    snippets.map((s) => (
+      <span class="pin">
+        <span class="pin-hint">{s.hint}</span>
+        <code class="pin-code" data-copy-code>{s.code}</code>
+        <button type="button" class="pin-copy" data-copy aria-label={`Copy ${s.hint}`}>
+          copy
+        </button>
+      </span>
+    ))
+  }
+</div>
+
+<style is:global>
+  .pins {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    align-items: flex-start;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    max-width: 100%;
+  }
+  .pin-hint {
+    font-family: var(--tv-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--tv-text-3);
+    flex: none;
+  }
+  .pin-code {
+    font-size: 0.75rem;
+    white-space: pre;
+    overflow-x: auto;
+    padding: 0.15rem 0.45rem;
+    border-radius: 6px;
+    background: var(--tv-bg-warm);
+    border: 1px solid var(--tv-divider);
+    color: var(--tv-text-1);
+  }
+  .pin-copy {
+    flex: none;
+    font-family: var(--tv-font-mono);
+    font-size: 0.6875rem;
+    line-height: 1;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid var(--tv-divider-strong);
+    background: transparent;
+    color: var(--tv-text-2);
+    cursor: pointer;
+    transition: color 0.2s var(--tv-ease-out-quint), border-color 0.2s var(--tv-ease-out-quint);
+  }
+  .pin-copy:hover {
+    color: var(--tv-accent);
+    border-color: var(--tv-accent);
+    text-decoration: none;
+  }
+  .pin-copy[data-flash] {
+    color: var(--tv-chip-ok-ink);
+    border-color: var(--tv-chip-ok-border);
+  }
+</style>

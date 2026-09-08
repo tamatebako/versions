@@ -1,0 +1,145 @@
+/*
+ * tebako versions — design tokens.
+ * Visual parity with tebako.org; update by hand when the main site's tokens
+ * change. (Visual tokens are not contract values; spec 00 invariant 10 does
+ * not apply, but this comment keeps the sync honest.)
+ * Source of truth: tebako.org/src/styles/global.css (@theme + :root/.dark).
+ */
+
+:root {
+  --tv-color-ink: #06394a;
+  --tv-color-ink-deep: #031d28;
+  --tv-color-paper: #faf5dc;
+  --tv-color-paper-soft: #fdf9e8;
+  --tv-color-paper-warm: #f5edd0;
+  --tv-color-vermillion: #c36242;
+  --tv-color-vermillion-deep: #b4473c;
+  --tv-color-gold: #f8b883;
+  --tv-color-amber: #d38370;
+  --tv-color-mist: #96abb8;
+  --tv-color-mist-pale: #c5d3db;
+
+  --tv-font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --tv-font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --tv-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --tv-radius-card: 1.25rem;
+  --tv-ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --tv-grain-opacity: 0.04;
+}
+
+:root {
+  color-scheme: light;
+  --tv-bg: var(--tv-color-paper);
+  --tv-bg-soft: var(--tv-color-paper-soft);
+  --tv-bg-warm: var(--tv-color-paper-warm);
+  --tv-card: #ffffff;
+  --tv-card-border: rgba(6, 57, 74, 0.1);
+  --tv-text-1: #1a2b34;
+  --tv-text-2: #4a5b66;
+  --tv-text-3: #5d6e77;
+  --tv-accent: var(--tv-color-vermillion);
+  --tv-accent-hover: var(--tv-color-vermillion-deep);
+  --tv-divider: rgba(6, 57, 74, 0.12);
+  --tv-divider-strong: rgba(6, 57, 74, 0.2);
+  --tv-shadow-card: 0 1px 3px rgba(6, 57, 74, 0.08), 0 8px 24px -8px rgba(6, 57, 74, 0.12);
+  --tv-chip-ok-bg: rgba(47, 122, 89, 0.12);
+  --tv-chip-ok-ink: #2f7a59;
+  --tv-chip-ok-border: rgba(47, 122, 89, 0.45);
+  --tv-chip-bad-bg: rgba(180, 71, 60, 0.12);
+  --tv-chip-bad-ink: #b4473c;
+  --tv-chip-bad-border: rgba(180, 71, 60, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --tv-bg: var(--tv-color-ink-deep);
+    --tv-bg-soft: #062a38;
+    --tv-bg-warm: #0a3548;
+    --tv-card: rgba(10, 74, 94, 0.4);
+    --tv-card-border: rgba(245, 237, 208, 0.1);
+    --tv-text-1: #e8dfc6;
+    --tv-text-2: #a8b8c0;
+    --tv-text-3: #7d9cab;
+    --tv-accent: var(--tv-color-gold);
+    --tv-accent-hover: var(--tv-color-amber);
+    --tv-divider: rgba(245, 237, 208, 0.12);
+    --tv-divider-strong: rgba(245, 237, 208, 0.2);
+    --tv-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 8px 24px -8px rgba(0, 0, 0, 0.4);
+    --tv-chip-ok-bg: rgba(138, 201, 164, 0.15);
+    --tv-chip-ok-ink: #8ac9a4;
+    --tv-chip-ok-border: rgba(138, 201, 164, 0.5);
+    --tv-chip-bad-bg: rgba(217, 114, 82, 0.18);
+    --tv-chip-bad-ink: #e59a82;
+    --tv-chip-bad-border: rgba(217, 114, 82, 0.5);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--tv-bg);
+  color: var(--tv-text-1);
+  font-family: var(--tv-font-sans);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: var(--tv-color-vermillion);
+  color: var(--tv-color-paper);
+}
+
+:focus-visible {
+  outline: 2px solid var(--tv-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+a {
+  color: var(--tv-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--tv-accent-hover);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--tv-font-mono);
+}
+
+.tv-grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: var(--tv-grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
