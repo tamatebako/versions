@@ -1,0 +1,11 @@
+factories:
+  - { repo: tamatebako/tebako-runtime-ruby,   engine: ruby }
+  - { repo: tamatebako/tebako-runtime-python, engine: python }
+feedstocks:
+  org: tebako-packages
+  registry_file: tpkg-registry.yaml
+product:
+  - { repo: tamatebako/tebako }
+triplets: [macos-arm64, macos-x86_64, linux-gnu-x86_64, linux-gnu-arm64,
+           linux-musl-x86_64, linux-musl-arm64, windows-ucrt64]
+checksum_names: [SHA256SUMS.txt, SHA256SUMS]

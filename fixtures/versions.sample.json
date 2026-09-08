@@ -1,0 +1,200 @@
+{
+  "generated_at": "2026-09-08T00:00:00.000Z",
+  "sources": [
+    {
+      "url": "fixture://versions.sample.json",
+      "kind": "registry",
+      "ok": true,
+      "note": "SAMPLE FIXTURE for offline layout dev (VERSIONS_OFFLINE=1) — hand-authored, not real data"
+    }
+  ],
+  "runtimes": [
+    {
+      "engine": "ruby",
+      "lang_version": "3.3.12",
+      "flavor": null,
+      "tebako_line": "0.16.22",
+      "triplet": "macos-arm64",
+      "reference": "ruby@3.3.12;tebako=0.16.22;image",
+      "latest_in_line": true,
+      "exe": {
+        "url": "https://github.com/tamatebako/tebako-runtime-ruby/releases/download/v0.16.22/tebako-runtime-0.16.22-3.3.12-macos-arm64",
+        "size": 9437184,
+        "downloads": 42,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "image": {
+        "url": "https://github.com/tamatebako/tebako-runtime-ruby/releases/download/v0.16.22/tebako-runtime-0.16.22-3.3.12-macos-arm64.tfs",
+        "size": 41943040,
+        "downloads": 21,
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "release": {
+        "tag": "v0.16.22",
+        "url": "https://github.com/tamatebako/tebako-runtime-ruby/releases/tag/v0.16.22",
+        "published_at": "2026-09-05T22:21:52Z",
+        "prerelease": false
+      }
+    },
+    {
+      "engine": "ruby",
+      "lang_version": "3.3.12",
+      "flavor": null,
+      "tebako_line": "0.16.22",
+      "triplet": "windows-ucrt64",
+      "reference": "ruby@3.3.12;tebako=0.16.22;image",
+      "latest_in_line": true,
+      "exe": {
+        "url": "https://github.com/tamatebako/tebako-runtime-ruby/releases/download/v0.16.22/tebako-runtime-0.16.22-3.3.12-windows-ucrt64",
+        "size": 10485760,
+        "downloads": 7,
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "image": {
+        "url": "https://github.com/tamatebako/tebako-runtime-ruby/releases/download/v0.16.22/tebako-runtime-0.16.22-3.3.12-windows-ucrt64.tfs",
+        "size": 44564480,
+        "downloads": 4,
+        "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "release": {
+        "tag": "v0.16.22",
+        "url": "https://github.com/tamatebako/tebako-runtime-ruby/releases/tag/v0.16.22",
+        "published_at": "2026-09-05T22:21:52Z",
+        "prerelease": false
+      }
+    },
+    {
+      "engine": "ruby",
+      "lang_version": "3.3.7",
+      "flavor": null,
+      "tebako_line": "0.16.21",
+      "triplet": "linux-gnu-x86_64",
+      "reference": "ruby@3.3.7;tebako=0.16.21;image",
+      "latest_in_line": false,
+      "exe": {
+        "url": "https://github.com/tamatebako/tebako-runtime-ruby/releases/download/v0.16.21/tebako-runtime-0.16.21-3.3.7-linux-gnu-x86_64",
+        "size": 9961472,
+        "downloads": 11,
+        "sha256": null
+      },
+      "image": {
+        "url": "https://github.com/tamatebako/tebako-runtime-ruby/releases/download/v0.16.21/tebako-runtime-0.16.21-3.3.7-linux-gnu-x86_64.tfs",
+        "size": 43515904,
+        "downloads": 6,
+        "sha256": null
+      },
+      "release": {
+        "tag": "v0.16.21",
+        "url": "https://github.com/tamatebako/tebako-runtime-ruby/releases/tag/v0.16.21",
+        "published_at": "2026-09-04T07:21:11Z",
+        "prerelease": false
+      }
+    },
+    {
+      "engine": "python",
+      "lang_version": "3.13.15",
+      "flavor": "jit",
+      "tebako_line": "0.1.2",
+      "triplet": "macos-arm64",
+      "reference": "python@3.13.15;tebako=0.1.2;image",
+      "latest_in_line": true,
+      "exe": {
+        "url": "https://github.com/tamatebako/tebako-runtime-python/releases/download/v0.1.2/tebako-runtime-0.1.2-3.13.15-jit-macos-arm64",
+        "size": 12582912,
+        "downloads": 9,
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "image": {
+        "url": "https://github.com/tamatebako/tebako-runtime-python/releases/download/v0.1.2/tebako-runtime-0.1.2-3.13.15-jit-macos-arm64.tfs",
+        "size": 51380224,
+        "downloads": 5,
+        "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "release": {
+        "tag": "v0.1.2",
+        "url": "https://github.com/tamatebako/tebako-runtime-python/releases/tag/v0.1.2",
+        "published_at": "2026-09-08T12:47:40Z",
+        "prerelease": false
+      }
+    },
+    {
+      "engine": "python",
+      "lang_version": "3.12.14",
+      "flavor": null,
+      "tebako_line": "0.1.1",
+      "triplet": "linux-musl-arm64",
+      "reference": "python@3.12.14;tebako=0.1.1;image",
+      "latest_in_line": true,
+      "exe": {
+        "url": "https://github.com/tamatebako/tebako-runtime-python/releases/download/v0.1.1/tebako-runtime-0.1.1-3.12.14-linux-musl-arm64",
+        "size": 13631488,
+        "downloads": 3,
+        "sha256": null
+      },
+      "image": {
+        "url": "https://github.com/tamatebako/tebako-runtime-python/releases/download/v0.1.1/tebako-runtime-0.1.1-3.12.14-linux-musl-arm64.tfs",
+        "size": 52428800,
+        "downloads": 2,
+        "sha256": null
+      },
+      "release": {
+        "tag": "v0.1.1",
+        "url": "https://github.com/tamatebako/tebako-runtime-python/releases/tag/v0.1.1",
+        "published_at": "2026-09-08T06:42:40Z",
+        "prerelease": false
+      }
+    }
+  ],
+  "payloads": [
+    {
+      "name": "metanorma",
+      "registry_repo": "tebako-packages/metanorma",
+      "registry_url": "https://github.com/tebako-packages/metanorma/blob/main/tpkg-registry.yaml",
+      "versions": [
+        {
+          "version": "1.16.9",
+          "entrypoints": ["metanorma", "metanorma-manifest", "asciidoctor"],
+          "runtime_requirement": "ruby ~> 3.3.0",
+          "platforms": ["aarch64-macos", "x86_64-linux-gnu", "x86_64-windows-ucrt"],
+          "artifact_url": null,
+          "sha256": null
+        }
+      ]
+    },
+    {
+      "name": "xml2rfc",
+      "registry_repo": "tebako-packages/xml2rfc",
+      "registry_url": "https://github.com/tebako-packages/xml2rfc/blob/main/tpkg-registry.yaml",
+      "versions": [
+        {
+          "version": "3.34.0",
+          "entrypoints": ["xml2rfc"],
+          "runtime_requirement": "python ~> 3.13.0",
+          "platforms": [
+            "aarch64-linux-gnu",
+            "aarch64-linux-musl",
+            "aarch64-macos",
+            "x86_64-linux-gnu",
+            "x86_64-linux-musl",
+            "x86_64-macos"
+          ],
+          "artifact_url": null,
+          "sha256": null
+        }
+      ]
+    }
+  ],
+  "toolchain": [
+    {
+      "version": "2.5.0",
+      "url": "https://github.com/tamatebako/tebako/releases/tag/v2.5.0",
+      "published_at": "2026-09-07T10:08:03Z",
+      "bootstrap": [
+        { "triplet": "linux-gnu-arm64", "bytes": 1807272 },
+        { "triplet": "linux-gnu-x86_64", "bytes": 2153704 },
+        { "triplet": "macos-arm64", "bytes": 1554816 },
+        { "triplet": "windows-ucrt64", "bytes": 2467328 }
+      ]
+    }
+  ]
+}
