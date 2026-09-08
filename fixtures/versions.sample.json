@@ -34,7 +34,10 @@
         "url": "https://github.com/tamatebako/tebako-runtime-ruby/releases/tag/v0.16.22",
         "published_at": "2026-09-05T22:21:52Z",
         "prerelease": false
-      }
+      },
+      "capabilities": [
+        "yjit"
+      ]
     },
     {
       "engine": "ruby",
@@ -61,7 +64,8 @@
         "url": "https://github.com/tamatebako/tebako-runtime-ruby/releases/tag/v0.16.22",
         "published_at": "2026-09-05T22:21:52Z",
         "prerelease": false
-      }
+      },
+      "capabilities": []
     },
     {
       "engine": "ruby",
@@ -88,7 +92,8 @@
         "url": "https://github.com/tamatebako/tebako-runtime-ruby/releases/tag/v0.16.21",
         "published_at": "2026-09-04T07:21:11Z",
         "prerelease": false
-      }
+      },
+      "capabilities": null
     },
     {
       "engine": "python",
@@ -115,7 +120,8 @@
         "url": "https://github.com/tamatebako/tebako-runtime-python/releases/tag/v0.1.2",
         "published_at": "2026-09-08T12:47:40Z",
         "prerelease": false
-      }
+      },
+      "capabilities": null
     },
     {
       "engine": "python",
@@ -142,7 +148,8 @@
         "url": "https://github.com/tamatebako/tebako-runtime-python/releases/tag/v0.1.1",
         "published_at": "2026-09-08T06:42:40Z",
         "prerelease": false
-      }
+      },
+      "capabilities": null
     }
   ],
   "payloads": [
@@ -153,9 +160,17 @@
       "versions": [
         {
           "version": "1.16.9",
-          "entrypoints": ["metanorma", "metanorma-manifest", "asciidoctor"],
+          "entrypoints": [
+            "metanorma",
+            "metanorma-manifest",
+            "asciidoctor"
+          ],
           "runtime_requirement": "ruby ~> 3.3.0",
-          "platforms": ["aarch64-macos", "x86_64-linux-gnu", "x86_64-windows-ucrt"],
+          "platforms": [
+            "aarch64-macos",
+            "x86_64-linux-gnu",
+            "x86_64-windows-ucrt"
+          ],
           "artifact_url": null,
           "sha256": null
         }
@@ -168,7 +183,9 @@
       "versions": [
         {
           "version": "3.34.0",
-          "entrypoints": ["xml2rfc"],
+          "entrypoints": [
+            "xml2rfc"
+          ],
           "runtime_requirement": "python ~> 3.13.0",
           "platforms": [
             "aarch64-linux-gnu",
@@ -190,10 +207,22 @@
       "url": "https://github.com/tamatebako/tebako/releases/tag/v2.5.0",
       "published_at": "2026-09-07T10:08:03Z",
       "bootstrap": [
-        { "triplet": "linux-gnu-arm64", "bytes": 1807272 },
-        { "triplet": "linux-gnu-x86_64", "bytes": 2153704 },
-        { "triplet": "macos-arm64", "bytes": 1554816 },
-        { "triplet": "windows-ucrt64", "bytes": 2467328 }
+        {
+          "triplet": "linux-gnu-arm64",
+          "bytes": 1807272
+        },
+        {
+          "triplet": "linux-gnu-x86_64",
+          "bytes": 2153704
+        },
+        {
+          "triplet": "macos-arm64",
+          "bytes": 1554816
+        },
+        {
+          "triplet": "windows-ucrt64",
+          "bytes": 2467328
+        }
       ]
     }
   ]
