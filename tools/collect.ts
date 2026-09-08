@@ -270,7 +270,53 @@ async function collectFactory(
     shaByRelease.set(rel.id, map);
   }
 
+  // Capability flow (plan 04): for latest-in-line rows only, fetch the
+  // per-runtime .manifest.json shard and read its additive `capabilities`
+  // key. Bounded to one small CDN download per (line × triplet) of the
+  // latest releases. Absent key, missing shard, or fetch miss → null (the
+  // page derives and marks it) — display metadata never fails the build.
+  const manifestCaps = new Map<string, string[] | null>();
+  let capMisses = 0;
+  const latestDrafts = [...rows.values()].filter(
+    (d) =>
+      d.exe !== null &&
+      latestReleaseByLine.get(`${d.langVer}|${d.flavor ?? ''}`)!.releaseId === d.release.id,
+  );
+  for (let i = 0; i < latestDrafts.length; i += 6) {
+    const chunk = latestDrafts.slice(i, i + 6);
+    await Promise.all(
+      chunk.map(async (d) => {
+        const exe = d.exe!;
+        try {
+          const asset = d.release.assets.find((a) => a.name === `${exe.name}.manifest.json`);
+          if (!asset) {
+            manifestCaps.set(exe.name, null);
+            return;
+          }
+          const res = await fetchWithRetry(asset.browser_download_url);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const doc = JSON.parse(await res.text()) as { capabilities?: unknown };
+          manifestCaps.set(
+            exe.name,
+            Array.isArray(doc?.capabilities) ? doc.capabilities.map(String) : null,
+          );
+        } catch {
+          capMisses++;
+          manifestCaps.set(exe.name, null);
+        }
+      }),
+    );
+  }
+
   const out: RuntimeRow[] = [];
+  if (capMisses > 0) {
+    statuses.push({
+      url: `${API_ROOT}/repos/${repo}/releases?per_page=20`,
+      kind: 'factory-release',
+      ok: true,
+      note: `${capMisses} capability-manifest fetch misses (chips stay derived)`,
+    });
+  }
   for (const d of rows.values()) {
     const line = `${d.langVer}|${d.flavor ?? ''}`;
     const shaMap = shaByRelease.get(d.release.id);
@@ -282,6 +328,7 @@ async function collectFactory(
       triplet: d.triplet,
       reference: `${engine}@${d.langVer};tebako=${d.tebakoVer};image`,
       latest_in_line: latestReleaseByLine.get(line)!.releaseId === d.release.id,
+      capabilities: (d.exe && manifestCaps.get(d.exe.name)) ?? null,
       exe: d.exe
         ? {
             url: d.exe.browser_download_url,
@@ -460,6 +507,7 @@ function validate(data: VersionsData): void {
   for (const r of data.runtimes) {
     need(isStr(r.engine) && isStr(r.lang_version) && (r.flavor === null || isStr(r.flavor)), 'runtime row: identity');
     need(isStr(r.tebako_line) && isStr(r.triplet) && isStr(r.reference) && typeof r.latest_in_line === 'boolean', `runtime row ${r.reference}: identity`);
+    need(r.capabilities === null || (Array.isArray(r.capabilities) && r.capabilities.every(isStr)), `runtime row ${r.reference}: capabilities`);
     if (r.exe !== null) validateArtifactRef(r.exe, `runtime ${r.reference} exe`);
     if (r.image !== null) validateArtifactRef(r.image, `runtime ${r.reference} image`);
     need(isStr(r.release.tag) && isStr(r.release.url) && isStr(r.release.published_at) && typeof r.release.prerelease === 'boolean', `runtime row ${r.reference}: release`);
@@ -525,6 +573,7 @@ async function main(): Promise<void> {
   const byEngine = new Map<string, number>();
   for (const r of runtimes) byEngine.set(r.engine, (byEngine.get(r.engine) ?? 0) + 1);
   const parts = [...byEngine.entries()].map(([e, n]) => `${e} ${n}`);
+  const flowed = runtimes.filter((r) => r.capabilities !== null).length;
 
   const data: VersionsData = {
     generated_at: new Date().toISOString(),
@@ -538,6 +587,9 @@ async function main(): Promise<void> {
   writeFileSync('src/data/versions.json', `${JSON.stringify(data, null, 2)}\n`);
   console.log(
     `collect: runtimes: ${data.runtimes.length} rows (${parts.join(', ')}) · payloads: ${data.payloads.length} · toolchain: ${data.toolchain.length}`,
+  );
+  console.log(
+    `collect: capabilities: ${flowed} flowed from factory manifests, ${data.runtimes.length - flowed} derived (fallback)`,
   );
   console.log(
     `collect: feedstocks: ${feed.probed} probed, ${feed.skipped} without ${cfg.feedstocks.registry_file}, ${feed.pointer} pointer registries`,

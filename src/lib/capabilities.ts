@@ -10,12 +10,13 @@ export interface CapabilityChip {
 // when a factory's published manifest carries a `capabilities:` key, that
 // value wins and the site renders a flowed chip instead of these).
 //
-// ruby `yjit`: lang_version >= 3.2 AND triplet != windows-ucrt64.
-//   Rule owner: tebako-runtime-ruby, build/lib/tebako_runtime_builder/boot_smoke.rb
-//   (BootSmoke#derived_yjit_state). Windows excluded: upstream CRuby lacks
-//   mingw-x64 YJIT.
-//   ruby >= 4.0 `zjit-proto` is NEVER derived here — it only renders when the
-//   manifest flows it (tebako-runtime-ruby#147).
+// ruby `yjit`: mirror of the factory's truth table
+// (tebako-runtime-ruby build/lib/tebako_runtime_builder/capabilities.rb):
+// non-windows legs of ruby >= 3.2, PLUS the 3.1 line on x86_64 only (its
+// YJIT_TARGET_OK arms no aarch64). "off" on windows (no mingw arm
+// upstream) and on 3.1's non-x86_64 legs.
+//   ruby >= 4.0 `zjit-proto` is NEVER derived here — only flowed via the
+//   factory manifest (tebako-runtime-ruby#147).
 // python `jit`: flavor == 'jit'.
 // other engines: no derived capabilities.
 const RUBY_YJIT_RULE_OWNER =
@@ -34,14 +35,23 @@ function minorAtLeast(langVersion: string, major: number, minor: number): boolea
   return maj > major || (maj === major && min >= minor);
 }
 
+function ruby31only(langVersion: string): boolean {
+  return /^3\.1(?:\.|$)/.test(langVersion);
+}
+
 export function deriveCapabilityChips(
   row: Pick<RuntimeRow, 'engine' | 'lang_version' | 'flavor' | 'triplet'>,
 ): CapabilityChip[] {
-  if (row.engine === 'ruby' && minorAtLeast(row.lang_version, 3, 2) && row.triplet !== 'windows-ucrt64') {
+  if (
+    row.engine === 'ruby' &&
+    !row.triplet.startsWith('windows-') &&
+    (minorAtLeast(row.lang_version, 3, 2) ||
+      (ruby31only(row.lang_version) && row.triplet.endsWith('x86_64')))
+  ) {
     return [
       {
         label: 'yjit',
-        note: 'derived: ruby >= 3.2 on non-windows — rule owner linked',
+        note: 'derived: non-windows, ruby >= 3.2 (or the 3.1 line on x86_64) — rule owner linked',
         source: RUBY_YJIT_RULE_OWNER,
       },
     ];

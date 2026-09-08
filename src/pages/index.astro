@@ -197,11 +197,19 @@ const okSources = v.sources.filter((s) => s.ok);
                           {r.release.prerelease && <span class="chip chip-pre" title="prerelease">pre</span>}
                         </td>
                         <td>
-                          {chips.map((c) => (
-                            <a class="chip chip-cap" href="#cap-rules" title={c.note}>
-                              {c.label}
-                            </a>
-                          ))}
+                          {r.capabilities !== null ? (
+                            r.capabilities.map((c) => (
+                              <span class="chip chip-cap chip-flowed" title="flowed from the factory's published runtime manifest">
+                                {c}
+                              </span>
+                            ))
+                          ) : (
+                            chips.map((c) => (
+                              <a class="chip chip-cap" href="#cap-rules" title={c.note}>
+                                {c.label}
+                              </a>
+                            ))
+                          )}
                         </td>
                         <td class="mono num">
                           {r.exe ? mib(r.exe.size) : '—'} / {r.image ? mib(r.image.size) : '—'}
@@ -220,10 +228,11 @@ const okSources = v.sources.filter((s) => s.ok);
           </table>
         </div>
         <p class="cap-rules" id="cap-rules">
-          Capability chips are derived at render time (dotted outline = derived). When a factory publishes a
-          <code>capabilities:</code> manifest key, that value wins (plan 04). Rules: ruby <code>yjit</code> —
-          lang ≥ 3.2 on non-windows triplets; owner:
-          <a href={CAPABILITY_RULE_OWNERS.ruby_yjit}>tebako-runtime-ruby boot_smoke.rb</a>. python
+          <strong>Solid chips</strong> flow from the factories' published runtime manifests
+          (<code>capabilities:</code> key — the authority). <strong>Dotted chips</strong> are derived at render
+          time for pre-key releases (and fetch misses) — a marked fallback, never the authority. Rules: ruby
+          <code>yjit</code> — non-windows, ruby ≥ 3.2 or the 3.1 line on x86_64; owner:
+          <a href={CAPABILITY_RULE_OWNERS.ruby_yjit}>tebako-runtime-ruby capabilities.rb</a>. python
           <code>jit</code> — the asset name carries the <code>-jit</code> flavor; owner:
           <a href={CAPABILITY_RULE_OWNERS.python_jit}>tebako-runtime-python releases</a>.
         </p>
@@ -629,6 +638,11 @@ const okSources = v.sources.filter((s) => s.ok);
     cursor: help;
   }
   a.chip-cap:hover {
+    border-color: var(--tv-accent);
+    color: var(--tv-accent);
+  }
+  .chip-flowed {
+    border-style: solid;
     border-color: var(--tv-accent);
     color: var(--tv-accent);
   }

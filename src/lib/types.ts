@@ -23,6 +23,9 @@ export interface RuntimeRow {
   triplet: string;
   reference: string;
   latest_in_line: boolean;
+  // Flowed from the factory's published .manifest.json (plan 04) — WINS over
+  // render-time derivation. null = pre-key release (or fetch miss): derive.
+  capabilities: string[] | null;
   exe: ArtifactRef | null;
   image: ArtifactRef | null;
   release: RuntimeReleaseRef;
