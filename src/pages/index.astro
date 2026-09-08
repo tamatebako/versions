@@ -1,17 +1,734 @@
 ---
+import type { RuntimeRow, VersionsData } from '../lib/types';
+import { deriveCapabilityChips, CAPABILITY_RULE_OWNERS } from '../lib/capabilities';
+import { BOOTSTRAP_MAX_BYTES } from '../lib/gates';
+import PinSnippet from '../components/PinSnippet.astro';
+import '../styles/tokens.css';
+import data from '../data/versions.json';
 
+const v = data as unknown as VersionsData;
+const generated = new Date(v.generated_at);
+
+const mib = (bytes: number): string => (bytes / 1_048_576).toFixed(1);
+
+function relAge(iso: string): string {
+  const h = Math.floor((generated.getTime() - new Date(iso).getTime()) / 3_600_000);
+  if (h < 1) return 'just now';
+  if (h < 24) return `${h} h ago`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? '1 day ago' : `${d} days ago`;
+}
+
+const versionKey = (s: string): number[] => s.split('.').map((n) => Number(n) || 0);
+
+interface LineGroup {
+  key: string;
+  engine: string;
+  lang: string;
+  flavor: string | null;
+  latestTebako: string;
+  rows: RuntimeRow[];
+  older: string[];
+}
+
+const lineGroups: LineGroup[] = [];
+const groupIndex = new Map<string, LineGroup>();
+for (const r of v.runtimes) {
+  const key = `${r.engine}|${r.lang_version}|${r.flavor ?? ''}`;
+  let g = groupIndex.get(key);
+  if (!g) {
+    g = {
+      key,
+      engine: r.engine,
+      lang: r.lang_version,
+      flavor: r.flavor,
+      latestTebako: '',
+      rows: [],
+      older: [],
+    };
+    groupIndex.set(key, g);
+    lineGroups.push(g);
+  }
+  if (r.latest_in_line) {
+    g.rows.push(r);
+    g.latestTebako = r.tebako_line;
+  } else if (!g.older.includes(r.tebako_line)) {
+    g.older.push(r.tebako_line);
+  }
+}
+for (const g of lineGroups) {
+  g.older.sort((a, b) => -versionKey(a).join('.').localeCompare(versionKey(b).join('.'), undefined, { numeric: true }));
+  g.rows.sort((a, b) => a.triplet.localeCompare(b.triplet));
+}
+
+interface PayloadView {
+  name: string;
+  registryRepo: string;
+  registryUrl: string;
+  latestVersion: string;
+  versionCount: number;
+  entrypoints: string[];
+  runtimeRequirement: string | null;
+  platforms: string[];
+}
+
+const payloads: PayloadView[] = v.payloads.map((p) => {
+  const sorted = [...p.versions].sort((a, b) =>
+    -versionKey(a.version).join('.').localeCompare(versionKey(b.version).join('.'), undefined, { numeric: true }),
+  );
+  const latest = sorted[0] ?? {
+    version: '—',
+    entrypoints: [],
+    runtime_requirement: null,
+    platforms: [],
+  };
+  return {
+    name: p.name,
+    registryRepo: p.registry_repo,
+    registryUrl: p.registry_url,
+    latestVersion: latest.version,
+    versionCount: p.versions.length,
+    entrypoints: latest.entrypoints,
+    runtimeRequirement: latest.runtime_requirement,
+    platforms: latest.platforms,
+  };
+});
+
+const envName = (tool: string): string => `TEBAKO_${tool.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_VERSION`;
+
+const buildStamp = `${v.generated_at.slice(0, 10)} ${v.generated_at.slice(11, 16)} UTC`;
+const okSources = v.sources.filter((s) => s.ok);
 ---
 
+<!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="index,follow" />
+    <meta
+      name="description"
+      content="Catalog of tebako runtime, payload and toolchain releases — a static, read-only rendering of the published registries and factory releases."
+    />
+    <title>tebako versions</title>
+    <link rel="icon" type="image/svg+xml" href="/versions/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+  </head>
+
+  <body class="tv-grain">
+    <main class="page">
+      <header class="hero">
+        <p class="eyebrow">catalog</p>
+        <h1>tebako versions</h1>
+        <p class="lede">
+          Every published runtime, payload and toolchain release of the tebako ecosystem — find your line, copy its pin.
+        </p>
+        <p class="stamp">
+          Built {buildStamp} · <a href="https://www.tebako.org/">tebako.org</a>
+        </p>
+        <label class="filter">
+          <span class="filter-label">filter</span>
+          <input id="filter" type="search" placeholder="ruby, 3.3.12, macos-arm64, metanorma…" autocomplete="off" />
+        </label>
+        <noscript><style>.filter { display: none; }</style></noscript>
+      </header>
+
+      <section id="runtimes" class="section" data-section>
+        <p class="eyebrow">interpreter + env image pairs</p>
+        <h2>Runtimes</h2>
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">platform</th>
+                <th scope="col">capabilities</th>
+                <th scope="col">exe / image MiB</th>
+                <th scope="col">downloads</th>
+                <th scope="col">age</th>
+                <th scope="col">sha256</th>
+              </tr>
+            </thead>
+            {
+              lineGroups.map((g) => (
+                <tbody
+                  class="line"
+                  data-filter={[g.engine, g.lang, g.flavor ?? '', g.latestTebako, ...g.rows.map((r) => r.triplet)].join(' ')}
+                >
+                  <tr class="line-head">
+                    <th colspan="6" scope="rowgroup">
+                      <div class="line-id">
+                        <span class="line-engine">{g.engine}</span>
+                        <span class="line-version">{g.lang}</span>
+                        {g.flavor && <span class="chip chip-flavor" title={`flavor: ${g.flavor}`}>{g.flavor}</span>}
+                        <a class="line-release" href={g.rows[0]?.release.url}>
+                          {g.latestTebako}
+                        </a>
+                      </div>
+                      {g.rows[0] && (
+                        <PinSnippet
+                          snippets={[
+                            { hint: 'reference', code: g.rows[0].reference },
+                            {
+                              hint: 'config.yaml',
+                              code: `runtimes:\n  ${g.engine}: { version: ${g.lang}, tebako: ${g.latestTebako} }`,
+                            },
+                          ]}
+                        />
+                      )}
+                      {g.older.length > 0 && (
+                        <details class="older">
+                          <summary>all releases in this line ({g.older.length + 1})</summary>
+                          <p class="older-list">{g.older.join(' · ')}</p>
+                        </details>
+                      )}
+                    </th>
+                  </tr>
+                  {g.rows.map((r) => {
+                    const chips = deriveCapabilityChips(r);
+                    return (
+                      <tr>
+                        <td>
+                          <span class="chip chip-platform">{r.triplet}</span>
+                          {r.release.prerelease && <span class="chip chip-pre" title="prerelease">pre</span>}
+                        </td>
+                        <td>
+                          {chips.map((c) => (
+                            <a class="chip chip-cap" href="#cap-rules" title={c.note}>
+                              {c.label}
+                            </a>
+                          ))}
+                        </td>
+                        <td class="mono num">
+                          {r.exe ? mib(r.exe.size) : '—'} / {r.image ? mib(r.image.size) : '—'}
+                        </td>
+                        <td class="num">{r.exe ? r.exe.downloads : '—'}</td>
+                        <td class="num">{relAge(r.release.published_at)}</td>
+                        <td class="mono sha" title={r.exe?.sha256 ?? 'no checksum fetched for older releases'}>
+                          {r.exe?.sha256 ? r.exe.sha256.slice(0, 12) : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              ))
+            }
+          </table>
+        </div>
+        <p class="cap-rules" id="cap-rules">
+          Capability chips are derived at render time (dotted outline = derived). When a factory publishes a
+          <code>capabilities:</code> manifest key, that value wins (plan 04). Rules: ruby <code>yjit</code> —
+          lang ≥ 3.2 on non-windows triplets; owner:
+          <a href={CAPABILITY_RULE_OWNERS.ruby_yjit}>tebako-runtime-ruby boot_smoke.rb</a>. python
+          <code>jit</code> — the asset name carries the <code>-jit</code> flavor; owner:
+          <a href={CAPABILITY_RULE_OWNERS.python_jit}>tebako-runtime-python releases</a>.
+        </p>
+      </section>
+
+      <section id="payloads" class="section" data-section>
+        <p class="eyebrow">apps + toolkits from the feedstocks</p>
+        <h2>Payloads</h2>
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">name</th>
+                <th scope="col">latest</th>
+                <th scope="col">versions</th>
+                <th scope="col">entrypoints</th>
+                <th scope="col">runtime</th>
+                <th scope="col">platforms</th>
+                <th scope="col">registry</th>
+                <th scope="col">pin</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                payloads.map((p) => (
+                  <tr
+                    class="payload-row"
+                    data-filter={[p.name, p.latestVersion, p.runtimeRequirement ?? '', ...p.entrypoints].join(' ')}
+                  >
+                    <td class="name">{p.name}</td>
+                    <td class="mono">{p.latestVersion}</td>
+                    <td class="num">{p.versionCount}</td>
+                    <td class="num" title={p.entrypoints.join(', ') || '—'}>
+                      {p.entrypoints.length} {p.entrypoints.length > 0 && <span class="entry-first">· {p.entrypoints[0]}</span>}
+                    </td>
+                    <td class="mono">{p.runtimeRequirement ?? '—'}</td>
+                    <td class="num" title={p.platforms.join(', ')}>
+                      {p.platforms.length}
+                    </td>
+                    <td>
+                      <a href={p.registryUrl}>{p.registryRepo}</a>
+                    </td>
+                    <td class="pin-cell">
+                      {p.entrypoints[0] && (
+                        <PinSnippet
+                          snippets={[
+                            { hint: 'env pin', code: `${envName(p.entrypoints[0])}=${p.latestVersion}` },
+                            { hint: 'shim verb', code: `tebako-shim use ${p.entrypoints[0]} ${p.latestVersion}` },
+                          ]}
+                        />
+                      )}
+                    </td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="toolchain" class="section" data-section>
+        <p class="eyebrow">the packager itself</p>
+        <h2>Toolchain</h2>
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">version</th>
+                <th scope="col">age</th>
+                <th scope="col">bootstrap size per platform — {`< ${mib(BOOTSTRAP_MAX_BYTES)} MiB gate`}</th>
+                <th scope="col">release</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                v.toolchain.map((t) => (
+                  <tr
+                    class="toolchain-row"
+                    data-filter={[t.version, ...t.bootstrap.map((b) => b.triplet)].join(' ')}
+                  >
+                    <td class="mono">{t.version}</td>
+                    <td class="num">{relAge(t.published_at)}</td>
+                    <td>
+                      <span class="gate-chips">
+                        {t.bootstrap.map((b) => (
+                          <span
+                            class={`chip chip-gate ${b.bytes < BOOTSTRAP_MAX_BYTES ? 'chip-ok' : 'chip-bad'}`}
+                            title={`${b.triplet}: ${b.bytes.toLocaleString('en-US')} bytes (gate ${BOOTSTRAP_MAX_BYTES.toLocaleString('en-US')})`}
+                          >
+                            {b.triplet.replace('linux-gnu-', 'gnu-').replace('linux-musl-', 'musl-')}{' '}
+                            {mib(b.bytes)}
+                          </span>
+                        ))}
+                      </span>
+                    </td>
+                    <td>
+                      <a href={t.url}>{t.url.replace('https://github.com', '')}</a>
+                    </td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <p class="eyebrow">rendered from</p>
+        <ul class="sources">
+          {
+            okSources.map((s) => (
+              <li>
+                <span class="src-kind">{s.kind}</span>
+                <a href={s.url}>{s.url.replace(/^https:\/\/(api\.github\.com|raw\.githubusercontent\.com)\//, '')}</a>
+                {s.note && <span class="src-note"> — {s.note}</span>}
+              </li>
+            ))
+          }
+        </ul>
+        <p class="readonly">
+          This page is a read-only rendering. Canonical resolution lives in the published registries and factory
+          releases (tebako spec 00, invariant 10).
+        </p>
+        <p class="stamp">Built {buildStamp} · <a href="https://www.tebako.org/">tebako.org</a></p>
+      </footer>
+    </main>
+
+    <script>
+      const input = document.getElementById('filter') as HTMLInputElement | null;
+      if (input) {
+        input.addEventListener('input', () => {
+          const q = input.value.trim().toLowerCase();
+          for (const el of document.querySelectorAll<HTMLElement>('[data-filter]')) {
+            el.toggleAttribute('hidden', q.length > 0 && !el.getAttribute('data-filter')!.toLowerCase().includes(q));
+          }
+          for (const section of document.querySelectorAll<HTMLElement>('[data-section]')) {
+            const targets = section.querySelectorAll<HTMLElement>('[data-filter]');
+            const anyVisible = [...targets].some((t) => !t.hasAttribute('hidden'));
+            section.toggleAttribute('hidden', q.length > 0 && !anyVisible);
+          }
+        });
+      }
+
+      document.addEventListener('click', async (e) => {
+        const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-copy]');
+        if (!btn) return;
+        const code = btn.parentElement?.querySelector<HTMLElement>('[data-copy-code]');
+        if (!code) return;
+        try {
+          await navigator.clipboard.writeText(code.textContent ?? '');
+          btn.textContent = 'copied';
+        } catch {
+          const range = document.createRange();
+          range.selectNodeContents(code);
+          const sel = getSelection();
+          sel?.removeAllRanges();
+          sel?.addRange(range);
+          btn.textContent = 'selected';
+        }
+        btn.setAttribute('data-flash', '');
+        setTimeout(() => {
+          btn.textContent = 'copy';
+          btn.removeAttribute('data-flash');
+        }, 1600);
+      });
+    </script>
+  </body>
 </html>
+
+<style is:global>
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 78rem;
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 4rem;
+  }
+
+  .hero {
+    margin-bottom: 2.5rem;
+    animation: hero-rise 0.7s var(--tv-ease-out-quint) both;
+  }
+  @keyframes hero-rise {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .eyebrow {
+    margin: 0 0 0.35rem;
+    font-family: var(--tv-font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--tv-accent);
+  }
+
+  h1 {
+    margin: 0;
+    font-family: var(--tv-font-display);
+    font-weight: 600;
+    font-size: clamp(2.25rem, 5vw, 3.25rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--tv-text-1);
+  }
+
+  .lede {
+    margin: 0.6rem 0 0;
+    max-width: 44rem;
+    font-size: 1.0625rem;
+    color: var(--tv-text-2);
+  }
+
+  .stamp {
+    margin: 0.9rem 0 0;
+    font-family: var(--tv-font-mono);
+    font-size: 0.8125rem;
+    color: var(--tv-text-3);
+  }
+
+  .filter {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 1.4rem;
+    max-width: 26rem;
+  }
+  .filter-label {
+    font-family: var(--tv-font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    color: var(--tv-text-3);
+  }
+  .filter input {
+    flex: 1;
+    font: inherit;
+    font-size: 0.9375rem;
+    padding: 0.5rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid var(--tv-divider-strong);
+    background: var(--tv-card);
+    color: var(--tv-text-1);
+  }
+  .filter input:focus-visible {
+    outline-offset: 0;
+  }
+
+  .section {
+    margin-top: 3rem;
+  }
+  .section h2 {
+    margin: 0 0 1rem;
+    font-family: var(--tv-font-display);
+    font-weight: 600;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+    color: var(--tv-text-1);
+  }
+
+  .tablewrap {
+    border: 1px solid var(--tv-card-border);
+    border-radius: var(--tv-radius-card);
+    background: var(--tv-card);
+    box-shadow: var(--tv-shadow-card);
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    min-width: 54rem;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    font-family: var(--tv-font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: left;
+    color: var(--tv-text-3);
+    padding: 0.7rem 0.9rem;
+    border-bottom: 1px solid var(--tv-divider-strong);
+    background: var(--tv-bg-soft);
+    white-space: nowrap;
+  }
+
+  td,
+  tbody th {
+    padding: 0.55rem 0.9rem;
+    border-bottom: 1px solid var(--tv-divider);
+    vertical-align: top;
+  }
+
+  tbody:last-child tr:last-child td {
+    border-bottom: none;
+  }
+
+  .mono {
+    font-family: var(--tv-font-mono);
+    font-size: 0.8125rem;
+    white-space: nowrap;
+  }
+  .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  thead th.num,
+  thead th {
+    text-align: left;
+  }
+  td.num {
+    text-align: right;
+  }
+
+  tbody.line tr:not(.line-head):hover td,
+  tr.payload-row:hover td,
+  tr.toolchain-row:hover td {
+    background: var(--tv-bg-soft);
+  }
+
+  .cap-rules {
+    margin: 0.8rem 0 0;
+    max-width: 52rem;
+    font-size: 0.8125rem;
+    color: var(--tv-text-3);
+  }
+  .cap-rules code {
+    font-size: 0.75rem;
+  }
+
+  .line-head th {
+    background: var(--tv-bg-warm);
+    border-bottom: 1px solid var(--tv-divider-strong);
+    padding: 0.7rem 0.9rem;
+  }
+
+  .line-id {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+  }
+  .line-engine {
+    font-family: var(--tv-font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--tv-accent);
+  }
+  .line-version {
+    font-family: var(--tv-font-display);
+    font-weight: 600;
+    font-size: 1.125rem;
+    color: var(--tv-text-1);
+  }
+  .line-release {
+    font-family: var(--tv-font-mono);
+    font-size: 0.75rem;
+    color: var(--tv-text-3);
+  }
+
+  .chip {
+    display: inline-block;
+    font-family: var(--tv-font-mono);
+    font-size: 0.6875rem;
+    line-height: 1;
+    padding: 0.28rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid var(--tv-divider-strong);
+    color: var(--tv-text-2);
+    white-space: nowrap;
+  }
+  .chip-platform {
+    background: var(--tv-bg-warm);
+  }
+  .chip-flavor {
+    border-color: var(--tv-accent);
+    color: var(--tv-accent);
+  }
+  .chip-pre {
+    border-color: var(--tv-chip-bad-border);
+    color: var(--tv-chip-bad-ink);
+    margin-left: 0.3rem;
+  }
+  a.chip-cap {
+    border-style: dotted;
+    border-color: var(--tv-divider-strong);
+    text-decoration: none;
+    cursor: help;
+  }
+  a.chip-cap:hover {
+    border-color: var(--tv-accent);
+    color: var(--tv-accent);
+  }
+  .chip-gate.chip-ok {
+    background: var(--tv-chip-ok-bg);
+    border-color: var(--tv-chip-ok-border);
+    color: var(--tv-chip-ok-ink);
+  }
+  .chip-gate.chip-bad {
+    background: var(--tv-chip-bad-bg);
+    border-color: var(--tv-chip-bad-border);
+    color: var(--tv-chip-bad-ink);
+  }
+  .gate-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .older {
+    margin-top: 0.45rem;
+  }
+  .older summary {
+    cursor: pointer;
+    font-family: var(--tv-font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
+    color: var(--tv-text-3);
+    width: fit-content;
+  }
+  .older summary:hover {
+    color: var(--tv-accent);
+  }
+  .older-list {
+    margin: 0.35rem 0 0;
+    font-family: var(--tv-font-mono);
+    font-size: 0.75rem;
+    color: var(--tv-text-2);
+  }
+
+  .sha {
+    color: var(--tv-text-2);
+  }
+
+  .payload-row .name {
+    font-weight: 600;
+    color: var(--tv-text-1);
+    white-space: nowrap;
+  }
+  .entry-first {
+    color: var(--tv-text-3);
+    font-size: 0.75rem;
+    font-family: var(--tv-font-mono);
+  }
+  .pin-cell {
+    min-width: 22rem;
+  }
+
+  .footer {
+    margin-top: 3.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--tv-divider-strong);
+  }
+  .sources {
+    margin: 0.5rem 0 1.25rem;
+    padding: 0;
+    list-style: none;
+    columns: 2;
+    column-gap: 2rem;
+  }
+  .sources li {
+    font-size: 0.8125rem;
+    color: var(--tv-text-2);
+    break-inside: avoid;
+    margin-bottom: 0.3rem;
+  }
+  .src-kind {
+    display: inline-block;
+    font-family: var(--tv-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--tv-text-3);
+    margin-right: 0.45rem;
+  }
+  .src-note {
+    color: var(--tv-text-3);
+  }
+  .readonly {
+    max-width: 44rem;
+    font-size: 0.9375rem;
+    color: var(--tv-text-2);
+  }
+
+  @media (max-width: 48rem) {
+    .page {
+      padding: 1.5rem 0.75rem 3rem;
+    }
+    .sources {
+      columns: 1;
+    }
+  }
+</style>
