@@ -98,6 +98,34 @@ const envName = (tool: string): string => `TEBAKO_${tool.toUpperCase().replace(/
 
 const buildStamp = `${v.generated_at.slice(0, 10)} ${v.generated_at.slice(11, 16)} UTC`;
 const okSources = v.sources.filter((s) => s.ok);
+
+// Static shields.io badge snippets (plan 05): generated from the data at
+// build time, copied as markdown — no dynamic badge service.
+const badge = (label: string, rhs: string): string =>
+  `[![${label}](https://img.shields.io/badge/${encodeURIComponent(label)}-${encodeURIComponent(rhs)}-blue)](https://www.tebako.org/versions)`;
+
+const cmpArr2 = (a: number[], b: number[]): number => {
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const d = (a[i] ?? 0) - (b[i] ?? 0);
+    if (d !== 0) return d;
+  }
+  return 0;
+};
+const latestLinePerEngine = [...new Set(v.runtimes.map((r) => r.engine))].map((engine) => {
+  const rows = v.runtimes.filter((r) => r.engine === engine && r.latest_in_line);
+  const best = [...rows].sort(
+    (a, b) =>
+      -cmpArr2(versionKey(a.lang_version), versionKey(b.lang_version)) ||
+      (a.flavor ?? '').localeCompare(b.flavor ?? ''),
+  )[0];
+  return best
+    ? badge('tebako runtime', `${engine} ${best.lang_version}${best.flavor ? `-${best.flavor}` : ''} · ${best.tebako_line}`)
+    : null;
+}).filter((s): s is string => s !== null);
+const payloadBadge = payloads[0]
+  ? badge('tebako payload', `${payloads[0].name} ${payloads[0].latestVersion}`)
+  : null;
+const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0].version) : null;
 ---
 
 <!doctype html>
@@ -236,6 +264,11 @@ const okSources = v.sources.filter((s) => s.ok);
           <code>jit</code> — the asset name carries the <code>-jit</code> flavor; owner:
           <a href={CAPABILITY_RULE_OWNERS.python_jit}>tebako-runtime-python releases</a>.
         </p>
+        {latestLinePerEngine.length > 0 && (
+          <div class="badge-row">
+            <PinSnippet snippets={latestLinePerEngine.map((code) => ({ hint: 'badge markdown', code }))} />
+          </div>
+        )}
       </section>
 
       <section id="payloads" class="section" data-section>
@@ -291,6 +324,11 @@ const okSources = v.sources.filter((s) => s.ok);
             </tbody>
           </table>
         </div>
+        {payloadBadge && (
+          <div class="badge-row">
+            <PinSnippet snippets={[{ hint: 'badge markdown', code: payloadBadge }]} />
+          </div>
+        )}
       </section>
 
       <section id="toolchain" class="section" data-section>
@@ -337,6 +375,11 @@ const okSources = v.sources.filter((s) => s.ok);
             </tbody>
           </table>
         </div>
+        {toolchainBadge && (
+          <div class="badge-row">
+            <PinSnippet snippets={[{ hint: 'badge markdown', code: toolchainBadge }]} />
+          </div>
+        )}
       </section>
 
       <footer class="footer">
@@ -566,6 +609,9 @@ const okSources = v.sources.filter((s) => s.ok);
     background: var(--tv-bg-soft);
   }
 
+  .badge-row {
+    margin-top: 0.7rem;
+  }
   .cap-rules {
     margin: 0.8rem 0 0;
     max-width: 52rem;

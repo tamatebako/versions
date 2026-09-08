@@ -20,6 +20,7 @@
     "esbuild": true
   },
   "devDependencies": {
+    "@astrojs/rss": "4.0.19",
     "yaml": "2.9.0"
   }
 }
