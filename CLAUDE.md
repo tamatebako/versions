@@ -1,0 +1,128 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this repo is
+
+**tebako versions** — a static, read-only catalog of the tebako ecosystem's
+published artifacts, styled after mise-versions.jdx.dev, hosted at
+https://www.tebako.org/versions via GitHub Pages. The GitHub remote must be
+`tamatebako/versions` (repo name = URL path).
+
+Status as of 2026-09-08: **greenfield**. The only content is the execution
+contract in `TODO.impl/` (plans 00–05). `TODO.impl/00-charter.md` is the
+owner-locked decision log — do not relitigate it. Execute plans in number
+order, one PR per plan. Dependency note: plan 04 is parallel to 01–03 and
+touches the two factory repos; plan 05 needs 03.
+
+This repo lives inside the tebako ecosystem — read `../CLAUDE.md` (the
+ecosystem map) for the five laws and repo table. The relevant ones here:
+no-default-service, SSOT (spec 00 invariant 10), and the < 3 MiB bootstrap
+gate (spec 00 invariant 2). This repo itself is plain TypeScript/Astro — no
+C, no Rust, no runtime services.
+
+## Commands
+
+Created by plan 01 (none exist before it lands):
+
+```bash
+npm run collect                    # run tools/collect.ts → src/data/versions.json (generated, gitignored)
+npm run build                      # prebuild runs collect, then astro build
+VERSIONS_OFFLINE=1 npm run build   # build from fixtures/versions.sample.json — zero network
+npm run dev                        # local dev server
+```
+
+CI (`.github/workflows/ci.yml`) runs both an online and an offline fixture
+build leg; local dev never needs network (the local network has an
+intermittent captive portal — see retry law below).
+
+## Architecture
+
+One static Astro site (`output: 'static'`, `site: https://www.tebako.org`,
+`base: '/versions'`, TypeScript strict). No server, no runtime JSON API, no
+database. Build-time pipeline only:
+
+```
+GitHub releases API (factory repos)      ┐
+tpkg-registry.yaml (feedstock repos)     ├─ tools/collect.ts → src/data/versions.json → src/pages/index.astro
+tamatebako/tebako releases (product)     ┘
+```
+
+The three data planes:
+
+1. **Factory releases** — `tamatebako/tebako-runtime-ruby`,
+   `tamatebako/tebako-runtime-python` (defined in `sources.yaml`). Asset
+   name grammar: `tebako-runtime-<tebakoVer>-<langVer>-<triplet>` + suffix
+   (none = interpreter exe, `.exe` on windows, `.tfs` = env image,
+   `.manifest.json`). `langVer` may carry a flavor suffix (`3.13.15-jit`) —
+   the parser must tolerate `-[a-z0-9]+` suffixes and expose them as the
+   flavor. Parse triplets by matching the KNOWN LIST in `sources.yaml`
+   against the name tail — never a greedy regex. Checksum asset:
+   `SHA256SUMS.txt` (verified in the ruby factory) or `SHA256SUMS`.
+2. **Feedstock registries** — `tpkg-registry.yaml` at the root of every
+   repo in the `tebako-packages` org (L3 mirror). Read defensively: unknown
+   keys ignored, missing ones → `null`. Repos without the file are skipped
+   (counted in the report, not an error). The site reads, never writes.
+3. **Product releases** — `tamatebako/tebako`: latest 5 releases, per-triplet
+   `tebako-bootstrap-<triplet>` asset sizes, rendered against the 3 MiB gate
+   (constant `3145728` lives ONCE in `src/lib/gates.ts`, citing spec 00
+   invariant 2).
+
+Key files: data schema `src/lib/types.ts` (`VersionsData` — runtime-checked
+by the collector with hand-rolled asserts) · capability derivation
+`src/lib/capabilities.ts` · pin snippets `src/components/PinSnippet.astro`
+· authored config `sources.yaml` at repo root · design tokens copied by
+hand into `src/styles/tokens.css` (visual parity with tebako.org — not a
+contract value).
+
+Capability chips are derived at render time (ruby: `yjit` when
+lang_version >= 3.2 AND triplet != windows-ucrt64; python: `jit` when
+flavor == 'jit') **as a fallback only** — plan 04 makes factories publish a
+`capabilities:` manifest key that WINS when present (solid chip vs dotted
+"derived" chip). The derive code must keep a comment saying it is the
+fallback, not the authority.
+
+## Laws for every change in this repo
+
+- **Read-only rendering / SSOT**: the site NEVER re-authors a contract
+  value. Everything rendered is fetched from a published source, or derived
+  with the rule shown on the page + a link to its owning source.
+- **Named failures, no partial data**: a source that fails after retries
+  fails the BUILD LOUDLY. A stale-looking half-catalog is worse than a
+  failed deploy; the previous deploy stays live.
+- **Network retries**: 3 retries, 5/15/45 s backoff on 403-rate-limit /
+  5xx / TLS / DNS, then fail.
+- **Never guess sha256**: rows without a fetched checksum get
+  `sha256: null`, rendered as `—`.
+- **YAML for authored config** (`sources.yaml`); JSON only for generated
+  data (`src/data/versions.json`, `fixtures/versions.sample.json`).
+- **No JS-required rendering**: tables fully render in static HTML;
+  filter/copy are vanilla-JS progressive enhancement only. No frameworks,
+  no hydration islands.
+- **No new services**: no dynamic badge endpoints, no search backend, no
+  analytics. Shields.io static badges only.
+- **Bounded, authenticated GitHub API use**: always send
+  `Authorization: Bearer $GITHUB_TOKEN` when set (unauthenticated is
+  60 req/h); releases list + one checksum fetch per LATEST release per
+  line + one raw file per feedstock — NO per-asset manifest fan-out until
+  plan 04.
+- **Page budget**: total page weight (HTML+CSS+JS) < 150 KB (plan 02
+  acceptance).
+
+## Process (from the charter)
+
+- Commits: `GIT_EDITOR=true git -c user.name=tebako-ci -c
+  user.email=tebako@ribose.com commit`.
+- PR bodies via `--body-file` only — inline `--body` with backticks
+  executes them as shell substitution.
+- One open PR at a time; draft until CI green. Merges to main of THIS repo
+  are fine once green. Production touches (tebako.org-side workflow
+  changes, Pages enablement) stay draft until the owner's go-ahead.
+- Plan 03's hosting path (A: org-pages subpath vs B: assemble into
+  tebako.org's deploy) is decided by its step-0 verification of the main
+  site's Pages config — if neither matches, STOP and ask the owner.
+- First real build must hit the charter's sanity expectations (ruby
+  3.3.7/3.3.12 on 0.16.x incl. windows-ucrt64; python 3.11.16 / 3.12.14 /
+  3.13.15 / 3.14.7 × 6 POSIX triplets, no windows row; payloads include
+  metanorma and xml2rfc; tebako 2.3.x with bootstrap bytes < 3145728). If
+  the build disagrees, the collector is wrong, not the ecosystem.
