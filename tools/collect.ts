@@ -6,6 +6,8 @@
 // failed deploy).
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
+import { parseRuntimeAsset, parseBootstrapAsset } from './lib/grammar.ts';
+import { CollectError, need, validate } from './lib/validate.ts';
 import type {
   PayloadRow,
   RuntimeRow,
@@ -18,12 +20,6 @@ const API_ROOT = 'https://api.github.com';
 const RAW_ROOT = 'https://raw.githubusercontent.com';
 const BACKOFF_S = [5, 15, 45];
 const TOKEN = process.env.GITHUB_TOKEN ?? '';
-
-class CollectError extends Error {}
-
-function need(cond: unknown, msg: string): void {
-  if (!cond) throw new CollectError(`collect: schema violation: ${msg}`);
-}
 
 interface SourcesConfig {
   factories: { repo: string; engine: string }[];
@@ -108,63 +104,12 @@ interface GhRelease {
   assets: GhAsset[];
 }
 
-type AssetKind = 'exe' | 'image' | 'manifest' | 'sidecar' | 'dll';
-
-interface ParsedAsset {
-  tebakoVer: string;
-  langVer: string;
-  flavor: string | null;
-  triplet: string;
-  kind: AssetKind;
-}
-
 // Asset grammar: tebako-runtime-<tebakoVer>-<langVer>[-<flavor>]-<triplet>
 // with suffixes: none = interpreter exe (POSIX), .exe (windows), .tfs = env
 // image, .manifest.json, .dll (ucrt), .sha256 sidecars. The triplet is matched
 // from the KNOWN LIST against the name tail — never a greedy regex — so
 // hyphenated triplets (linux-gnu-x86_64, windows-ucrt64) and langVer flavor
 // suffixes (3.13.15-jit) stay unambiguous.
-function parseRuntimeAsset(name: string, triplets: string[]): ParsedAsset | null {
-  const PREFIX = 'tebako-runtime-';
-  if (!name.startsWith(PREFIX)) return null;
-  let stem = name.slice(PREFIX.length);
-  let kind: AssetKind;
-  if (stem.endsWith('.manifest.json')) {
-    kind = 'manifest';
-    stem = stem.slice(0, -'.manifest.json'.length);
-  } else if (stem.endsWith('.sha256')) {
-    kind = 'sidecar';
-    stem = stem.slice(0, -'.sha256'.length);
-  } else if (stem.endsWith('.tfs')) {
-    kind = 'image';
-    stem = stem.slice(0, -'.tfs'.length);
-  } else if (stem.endsWith('.exe')) {
-    kind = 'exe';
-    stem = stem.slice(0, -'.exe'.length);
-  } else if (stem.endsWith('.dll')) {
-    kind = 'dll';
-    stem = stem.slice(0, -'.dll'.length);
-  } else {
-    kind = 'exe';
-  }
-  let triplet: string | null = null;
-  for (const t of triplets) {
-    if (stem.endsWith('-' + t)) {
-      triplet = t;
-      break;
-    }
-  }
-  if (triplet === null) return null;
-  const head = stem.slice(0, stem.length - triplet.length - 1);
-  const dash = head.indexOf('-');
-  if (dash < 0) return null;
-  const tebakoVer = head.slice(0, dash);
-  if (!/^\d+(\.\d+)+$/.test(tebakoVer)) return null;
-  const m = /^(\d+\.\d+(?:\.\d+)?)(?:-([a-z0-9]+))?$/.exec(head.slice(dash + 1));
-  if (m === null) return null;
-  return { tebakoVer, langVer: m[1], flavor: m[2] ?? null, triplet, kind };
-}
-
 async function collectFactory(
   repo: string,
   engine: string,
@@ -510,15 +455,8 @@ async function collectToolchain(
   for (const rel of releases) {
     const bootstrap: ToolchainRow['bootstrap'] = [];
     for (const asset of rel.assets) {
-      // Asset grammar: tebako-bootstrap-<ver>-<triplet>[.exe]; .sha256 sidecars skipped.
-      if (!asset.name.startsWith('tebako-bootstrap-') || asset.name.endsWith('.sha256')) continue;
-      let stem = asset.name.slice('tebako-bootstrap-'.length);
-      if (stem.endsWith('.exe')) stem = stem.slice(0, -'.exe'.length);
-      const triplet = cfg.triplets.find((t) => stem.endsWith('-' + t));
-      if (!triplet) continue;
-      const ver = stem.slice(0, stem.length - triplet.length - 1);
-      if (!/^\d+(\.\d+)+$/.test(ver)) continue;
-      bootstrap.push({ triplet, bytes: asset.size });
+      const parsed = parseBootstrapAsset(asset.name, cfg.triplets);
+      if (parsed) bootstrap.push({ triplet: parsed.triplet, bytes: asset.size });
     }
     bootstrap.sort((a, b) => a.triplet.localeCompare(b.triplet));
     out.push({
@@ -531,48 +469,8 @@ async function collectToolchain(
   return out;
 }
 
-const isStr = (v: unknown): boolean => typeof v === 'string';
-
-function validateArtifactRef(a: unknown, where: string): void {
-  const r = a as Record<string, unknown> | null;
-  need(r !== null && isStr(r.url) && typeof r.size === 'number' && typeof r.downloads === 'number' && (r.sha256 === null || isStr(r.sha256)), `${where}: artifact`);
-}
-
 // Hand-rolled runtime check of versions.json against the VersionsData shape
 // (plan 01: no new validation dependency).
-function validate(data: VersionsData): void {
-  need(isStr(data.generated_at), 'generated_at');
-  need(Array.isArray(data.sources), 'sources[]');
-  for (const s of data.sources) {
-    need(isStr(s.url) && isStr(s.kind) && typeof s.ok === 'boolean', 'sources[] entry');
-  }
-  need(Array.isArray(data.runtimes), 'runtimes[]');
-  for (const r of data.runtimes) {
-    need(isStr(r.engine) && isStr(r.lang_version) && (r.flavor === null || isStr(r.flavor)), 'runtime row: identity');
-    need(isStr(r.tebako_line) && isStr(r.triplet) && isStr(r.reference) && typeof r.latest_in_line === 'boolean', `runtime row ${r.reference}: identity`);
-    need(r.capabilities === null || (Array.isArray(r.capabilities) && r.capabilities.every(isStr)), `runtime row ${r.reference}: capabilities`);
-    if (r.exe !== null) validateArtifactRef(r.exe, `runtime ${r.reference} exe`);
-    if (r.image !== null) validateArtifactRef(r.image, `runtime ${r.reference} image`);
-    need(isStr(r.release.tag) && isStr(r.release.url) && isStr(r.release.published_at) && typeof r.release.prerelease === 'boolean', `runtime row ${r.reference}: release`);
-  }
-  need(Array.isArray(data.payloads), 'payloads[]');
-  for (const p of data.payloads) {
-    need(isStr(p.name) && (p.kind === null || isStr(p.kind)) && (p.summary === null || isStr(p.summary)) && isStr(p.registry_repo) && isStr(p.registry_url) && Array.isArray(p.versions), `payload ${p.name}`);
-    for (const v of p.versions) {
-      need(isStr(v.version) && Array.isArray(v.entrypoints) && (v.runtime_requirement === null || isStr(v.runtime_requirement)) && Array.isArray(v.platforms) && (v.artifact_url === null || isStr(v.artifact_url)) && (v.sha256 === null || isStr(v.sha256)), `payload ${p.name} version ${v.version}`);
-      for (const pf of v.platforms) {
-        need(isStr(pf.platform) && (pf.artifact === null || isStr(pf.artifact)) && (pf.sha256 === null || isStr(pf.sha256)), `payload ${p.name} version ${v.version} platform ${pf.platform}`);
-      }
-    }
-  }
-  need(Array.isArray(data.toolchain), 'toolchain[]');
-  for (const t of data.toolchain) {
-    need(isStr(t.version) && isStr(t.url) && isStr(t.published_at) && Array.isArray(t.bootstrap), `toolchain ${t.version}`);
-    for (const b of t.bootstrap) {
-      need(isStr(b.triplet) && typeof b.bytes === 'number', `toolchain ${t.version} bootstrap ${b.triplet}`);
-    }
-  }
-}
 
 const versionKey = (v: string): number[] => v.split('.').map((n) => Number(n) || 0);
 
