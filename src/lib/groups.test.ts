@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { lineViews } from './groups.ts';
+import { lineViews, payloadViews, payloadKindGroups, latestLinePerEngine } from './groups.ts';
 import type { VersionsData } from './types.ts';
 
 const row = (over: Partial<VersionsData['runtimes'][number]>): VersionsData['runtimes'][number] => ({
@@ -27,7 +27,35 @@ const data: VersionsData = {
     row({ tebako_line: '0.16.21', latest_in_line: false, reference: 'ruby@3.3.12;tebako=0.16.21;image' }),
     row({ engine: 'python', lang_version: '3.13.15', flavor: 'jit', tebako_line: '0.1.2', triplet: 'macos-arm64' }),
   ],
-  payloads: [],
+  payloads: [
+    {
+      name: 'xml2rfc',
+      kind: 'app',
+      summary: null,
+      registry_repo: 'tebako-packages/xml2rfc',
+      registry_url: 'https://x',
+      versions: [
+        {
+          version: '3.34.0',
+          entrypoints: ['xml2rfc'],
+          runtime_requirement: 'python ~> 3.13.0',
+          platforms: [{ platform: 'x86_64-macos', artifact: 'a.tfs', sha256: null }],
+          artifact_url: null,
+          sha256: null,
+        },
+      ],
+    },
+    {
+      name: 'hello',
+      kind: 'toolkit',
+      summary: 'prover payload',
+      registry_repo: 'tebako-packages/hello',
+      registry_url: 'https://x',
+      versions: [
+        { version: '2.12', entrypoints: ['hello'], runtime_requirement: null, platforms: [], artifact_url: null, sha256: null },
+      ],
+    },
+  ],
   toolchain: [],
 };
 
@@ -47,4 +75,30 @@ test('flavored lines are distinct lines and slug distinctly', () => {
   const jit = lineViews(data).find((v) => v.engine === 'python')!;
   assert.strictEqual(jit.flavor, 'jit');
   assert.strictEqual(jit.slug, 'python-3.13.15-jit');
+});
+
+test('payload views carry the latest-version fields the index renders', () => {
+  const views = payloadViews(data);
+  assert.strictEqual(views.length, 2);
+  const x = views.find((p) => p.name === 'xml2rfc')!;
+  assert.strictEqual(x.kind, 'app');
+  assert.strictEqual(x.latestVersion, '3.34.0');
+  assert.strictEqual(x.runtimeRequirement, 'python ~> 3.13.0');
+  assert.strictEqual(x.platformCount, 1);
+  assert.deepStrictEqual(x.entrypoints, ['xml2rfc']);
+  // flat list is name-sorted (hello precedes xml2rfc)
+  assert.strictEqual(views[0].name, 'hello');
+});
+
+test('kind groups follow the registries’ vocabulary, apps first', () => {
+  const groups = payloadKindGroups(payloadViews(data));
+  assert.deepStrictEqual(groups.map((g) => g.kind), ['app', 'toolkit']);
+  assert.strictEqual(groups[1].rows[0].summary, 'prover payload');
+});
+
+test('latestLinePerEngine picks the highest latest line per engine', () => {
+  const best = latestLinePerEngine(data);
+  assert.strictEqual(best.length, 2);
+  assert.strictEqual(best.find((r) => r.engine === 'ruby')?.lang_version, '3.3.12');
+  assert.strictEqual(best.find((r) => r.engine === 'python')?.flavor, 'jit');
 });

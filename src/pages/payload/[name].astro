@@ -1,26 +1,17 @@
 ---
-import type { VersionsData } from '../../lib/types';
-import { payloadVersionsDesc } from '../../lib/groups';
+import { loadVersions } from '../../lib/data';
+import { envName, badge } from '../../lib/format';
 import PinSnippet from '../../components/PinSnippet.astro';
 import '../../styles/tokens.css';
-import data from '../../data/versions.json';
+import '../../styles/base.css';
 
-const v = data as unknown as VersionsData;
-
-// getStaticPaths runs in isolation (no module-scope bindings) — import inside.
 export async function getStaticPaths() {
-  const { payloadVersionsDesc } = await import('../../lib/groups');
-  const mod = (await import('../../data/versions.json')).default as unknown as VersionsData;
-  return mod.payloads.map((p) => ({
-    params: { name: p.name },
-    props: { payload: p, versions: payloadVersionsDesc(p) },
-  }));
+  return (await import('../../lib/paths')).payloadRoutes();
 }
 
 const { payload, versions } = Astro.props;
 
-const envName = (tool: string): string => `TEBAKO_${tool.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_VERSION`;
-const badge = `[![tebako payload](https://img.shields.io/badge/tebako%20payload-${encodeURIComponent(`${payload.name} ${versions[0]?.version ?? ''}`)}-blue)](https://www.tebako.org/versions)`;
+const payloadBadge = badge('tebako payload', `${payload.name} ${versions[0]?.version ?? ''}`);
 ---
 
 <!doctype html>
@@ -54,7 +45,7 @@ const badge = `[![tebako payload](https://img.shields.io/badge/tebako%20payload-
           <a href="https://www.tebako.org/">tebako.org</a>
         </p>
         <div class="hero-pins">
-          <PinSnippet snippets={[{ hint: 'badge markdown', code: badge }]} />
+          <PinSnippet snippets={[{ hint: 'badge markdown', code: payloadBadge }]} />
         </div>
       </header>
 
@@ -122,32 +113,43 @@ const badge = `[![tebako payload](https://img.shields.io/badge/tebako%20payload-
 </html>
 
 <style is:global>
-  .page { position: relative; z-index: 1; max-width: 72rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
-  .hero { margin-bottom: 2rem; }
-  .eyebrow { margin: 0 0 0.35rem; font-family: var(--tv-font-mono); font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; }
-  .eyebrow a { color: var(--tv-accent); }
-  h1 { margin: 0; font-family: var(--tv-font-display); font-weight: 600; font-size: clamp(2rem, 4.5vw, 3rem); line-height: 1.1; letter-spacing: -0.02em; color: var(--tv-text-1); display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
-  .lede { margin: 0.6rem 0 0; max-width: 46rem; color: var(--tv-text-2); }
-  .stamp { margin: 0.7rem 0 0; font-family: var(--tv-font-mono); font-size: 0.8125rem; color: var(--tv-text-3); }
-  .hero-pins { margin-top: 1rem; }
-  .section { margin-top: 2rem; }
-  .section.older { opacity: 0.88; }
-  .group-head { display: flex; align-items: baseline; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
-  .group-head h2 { margin: 0; font-family: var(--tv-font-display); font-weight: 600; font-size: 1.375rem; color: var(--tv-text-1); }
-  .group-meta { font-size: 0.75rem; color: var(--tv-text-3); }
-  .block { margin-bottom: 0.9rem; }
-  .block-label { margin: 0 0 0.3rem; font-family: var(--tv-font-mono); font-size: 0.6875rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--tv-text-3); }
-  .tablewrap { border: 1px solid var(--tv-card-border); border-radius: var(--tv-radius-card); background: var(--tv-card); box-shadow: var(--tv-shadow-card); overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; min-width: 36rem; }
-  thead th { font-family: var(--tv-font-mono); font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; text-align: left; color: var(--tv-text-3); padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--tv-divider-strong); background: var(--tv-bg-soft); white-space: nowrap; }
-  td { padding: 0.55rem 0.9rem; border-bottom: 1px solid var(--tv-divider); vertical-align: top; }
-  tbody tr:last-child td { border-bottom: none; }
-  tbody tr:hover td { background: var(--tv-bg-soft); }
-  .mono { font-family: var(--tv-font-mono); font-size: 0.8125rem; }
-  .artifact { white-space: nowrap; color: var(--tv-text-2); }
-  .sha { color: var(--tv-text-2); }
-  .chip { display: inline-block; font-family: var(--tv-font-mono); font-size: 0.6875rem; line-height: 1; padding: 0.28rem 0.55rem; border-radius: 999px; border: 1px solid var(--tv-divider-strong); color: var(--tv-text-2); white-space: nowrap; }
-  .chip-platform { background: var(--tv-bg-warm); }
-  .chip-flavor { border-color: var(--tv-accent); color: var(--tv-accent); }
-  .chip-flowed { border-style: solid; border-color: var(--tv-accent); color: var(--tv-accent); }
+  /* payload-page-specific; shared language in styles/base.css */
+  h1 {
+    margin: 0;
+    font-family: var(--tv-font-display);
+    font-weight: 600;
+    font-size: clamp(2rem, 4.5vw, 3rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--tv-text-1);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .section.older {
+    opacity: 0.88;
+  }
+
+  .hero-pins {
+    margin-top: 1rem;
+  }
+
+  .block {
+    margin-bottom: 0.9rem;
+  }
+  .block-label {
+    margin: 0 0 0.3rem;
+    font-family: var(--tv-font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--tv-text-3);
+  }
+
+  .artifact {
+    white-space: nowrap;
+    color: var(--tv-text-2);
+  }
 </style>
