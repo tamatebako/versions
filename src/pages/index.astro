@@ -3,6 +3,7 @@ import type { RuntimeRow } from '../lib/types';
 import { deriveCapabilityChips, CAPABILITY_RULE_OWNERS } from '../lib/capabilities';
 import { BOOTSTRAP_MAX_BYTES } from '../lib/gates';
 import { lineViews, payloadViews, payloadKindGroups, latestLinePerEngine } from '../lib/groups';
+import { linePath, payloadPath } from '../lib/paths';
 import { mib, relAge, envName, badge } from '../lib/format';
 import { loadVersions } from '../lib/data';
 import PinSnippet from '../components/PinSnippet.astro';
@@ -120,7 +121,7 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
                       )}
                       <a
                         class="line-all"
-                        href={`/versions/runtime/${g.engine}-${g.lang}${g.flavor ? `-${g.flavor}` : ''}`}
+                        href={linePath(g.engine, g.lang, g.flavor)}
                       >
                         all releases ({g.olderCount + 1}) ↗
                       </a>
@@ -215,7 +216,7 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
                       data-filter={[p.name, p.kind ?? '', p.latestVersion, p.runtimeRequirement ?? '', ...p.entrypoints].join(' ')}
                     >
                       <td class="name">
-                        <a href={`/versions/payload/${p.name}`}>{p.name}</a>
+                        <a href={payloadPath(p.name)}>{p.name}</a>
                         {p.summary && <span class="name-summary">{p.summary}</span>}
                       </td>
                     <td class="mono">{p.latestVersion}</td>

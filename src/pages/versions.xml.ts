@@ -1,5 +1,6 @@
 import rss from '@astrojs/rss';
 import { loadVersions } from '../lib/data';
+import { linePath } from '../lib/paths';
 
 const v = loadVersions();
 
@@ -18,7 +19,7 @@ export async function GET(context: { site: URL }) {
       title: `${r.engine} ${r.lang_version}${r.flavor ? `-${r.flavor}` : ''} · tebako ${r.tebako_line}`,
       pubDate: new Date(r.release.published_at),
       description: `Runtime line ${r.reference} — ${r.triplet} et al.`,
-      link: r.release.url,
+      link: linePath(r.engine, r.lang_version, r.flavor),
       categories: [r.engine],
     });
   }
