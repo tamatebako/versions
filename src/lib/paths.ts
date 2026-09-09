@@ -3,7 +3,6 @@
 // (no page-file bindings), which is why this module is the one import it
 // needs.
 import { lineViews, lineSlug, payloadVersionsDesc, type LineView } from './groups.ts';
-import { loadVersions } from './data.ts';
 import type { PayloadRow, PayloadVersion, VersionsData } from './types.ts';
 
 export const INDEX_PATH = '/versions';
@@ -20,7 +19,10 @@ export interface RuntimeRoute {
   props: { view: LineView };
 }
 
-export function runtimeRoutes(): RuntimeRoute[] {
+// The data import is lazy: src/data/versions.json is GENERATED, and pure
+// consumers (tests, sitemapPaths) must not require a build to have run.
+export async function runtimeRoutes(): Promise<RuntimeRoute[]> {
+  const { loadVersions } = await import('./data.ts');
   return lineViews(loadVersions()).map((g) => ({ params: { line: g.slug }, props: { view: g } }));
 }
 
@@ -29,7 +31,8 @@ export interface PayloadRoute {
   props: { payload: PayloadRow; versions: PayloadVersion[] };
 }
 
-export function payloadRoutes(): PayloadRoute[] {
+export async function payloadRoutes(): Promise<PayloadRoute[]> {
+  const { loadVersions } = await import('./data.ts');
   return loadVersions().payloads.map((p) => ({
     params: { name: p.name },
     props: { payload: p, versions: payloadVersionsDesc(p) },
