@@ -371,9 +371,14 @@ function mapRegistry(doc: unknown, repo: string, url: string): PayloadRow[] {
     for (const v of Array.isArray(p.versions) ? (p.versions as Record<string, unknown>[]) : []) {
       const platformsObj =
         v?.platforms && typeof v.platforms === 'object' ? (v.platforms as Record<string, Record<string, unknown>>) : {};
-      const platforms = Object.keys(platformsObj).sort();
+      const platforms = Object.entries(platformsObj)
+        .map(([platform, entry]) => ({
+          platform,
+          artifact: typeof entry?.artifact === 'string' ? entry.artifact : null,
+          sha256: typeof entry?.sha256 === 'string' ? entry.sha256 : null,
+        }))
+        .sort((a, b) => a.platform.localeCompare(b.platform));
       const req = v?.runtime_requirement as Record<string, unknown> | undefined;
-      const single = platforms.length === 1 ? platformsObj[platforms[0]] : undefined;
       versions.push({
         version: String(v?.version ?? ''),
         entrypoints: Array.isArray(v?.entrypoints) ? (v.entrypoints as unknown[]).map(String) : [],
@@ -383,13 +388,36 @@ function mapRegistry(doc: unknown, repo: string, url: string): PayloadRow[] {
             : null,
         platforms,
         // The registry carries artifact filenames + release refs, not absolute
-        // URLs — never guess one. sha256 is only unambiguous for single-platform
-        // versions; otherwise null.
+        // URLs — never guess one.
         artifact_url: null,
-        sha256: single && typeof single.sha256 === 'string' ? single.sha256 : null,
+        sha256: platforms.length === 1 ? platforms[0].sha256 : null,
       });
     }
-    out.push({ name: p.name, registry_repo: repo, registry_url: url, versions });
+    out.push({
+      name: p.name,
+      kind: typeof p?.kind === 'string' ? p.kind : null,
+      summary: typeof p?.summary === 'string' ? p.summary : null,
+      registry_repo: repo,
+      registry_url: url,
+      versions,
+    });
+  }
+  return out;
+}
+
+// The org index catalog (registry-of-registries): packages[] entries carry
+// per-package kind + human summaries — the description source for payloads
+// whose own feedstock registry doesn't spell one out.
+function harvestCatalogInfo(doc: unknown): Map<string, { kind: string | null; summary: string | null }> {
+  const d = doc as { packages?: unknown[] } | null;
+  const out = new Map<string, { kind: string | null; summary: string | null }>();
+  if (!d || !Array.isArray(d.packages)) return out;
+  for (const pkg of d.packages as Record<string, unknown>[]) {
+    if (typeof pkg?.name !== 'string') continue;
+    out.set(pkg.name, {
+      kind: typeof pkg.kind === 'string' ? pkg.kind : null,
+      summary: typeof pkg.summary === 'string' ? pkg.summary : null,
+    });
   }
   return out;
 }
@@ -408,6 +436,7 @@ async function collectFeedstocks(
     }
   }
   const rows: PayloadRow[] = [];
+  const catalogInfo = new Map<string, Map<string, { kind: string | null; summary: string | null }>>();
   let skipped = 0;
   let pointerRegistries = 0;
   for (const repo of repos) {
@@ -440,11 +469,25 @@ async function collectFeedstocks(
       // legitimately carry no versioned payloads[] — a valid observation, not
       // a source failure.
       pointerRegistries++;
+      catalogInfo.set(url, harvestCatalogInfo(doc));
       statuses.push({ url, kind: 'registry', ok: true, note: 'no payloads[] (catalog/pointer registry)' });
       continue;
     }
     rows.push(...mapped);
     statuses.push({ url, kind: 'registry', ok: true, note: `${mapped.length} payload(s)` });
+  }
+  // Fill kind/summary gaps from the org index catalog (a pointer registry):
+  // descriptions flow from published sources — the site never authors them.
+  const catalogEntries = new Map<string, { kind: string | null; summary: string | null }>();
+  for (const harvested of catalogInfo.values()) {
+    for (const [name, entry] of harvested) {
+      if (!catalogEntries.has(name)) catalogEntries.set(name, entry);
+    }
+  }
+  for (const row of rows) {
+    const cat = catalogEntries.get(row.name);
+    row.kind = row.kind ?? cat?.kind ?? null;
+    row.summary = row.summary ?? cat?.summary ?? null;
   }
   return { rows, probed: repos.length, skipped, pointer: pointerRegistries };
 }
@@ -514,9 +557,12 @@ function validate(data: VersionsData): void {
   }
   need(Array.isArray(data.payloads), 'payloads[]');
   for (const p of data.payloads) {
-    need(isStr(p.name) && isStr(p.registry_repo) && isStr(p.registry_url) && Array.isArray(p.versions), `payload ${p.name}`);
+    need(isStr(p.name) && (p.kind === null || isStr(p.kind)) && (p.summary === null || isStr(p.summary)) && isStr(p.registry_repo) && isStr(p.registry_url) && Array.isArray(p.versions), `payload ${p.name}`);
     for (const v of p.versions) {
       need(isStr(v.version) && Array.isArray(v.entrypoints) && (v.runtime_requirement === null || isStr(v.runtime_requirement)) && Array.isArray(v.platforms) && (v.artifact_url === null || isStr(v.artifact_url)) && (v.sha256 === null || isStr(v.sha256)), `payload ${p.name} version ${v.version}`);
+      for (const pf of v.platforms) {
+        need(isStr(pf.platform) && (pf.artifact === null || isStr(pf.artifact)) && (pf.sha256 === null || isStr(pf.sha256)), `payload ${p.name} version ${v.version} platform ${pf.platform}`);
+      }
     }
   }
   need(Array.isArray(data.toolchain), 'toolchain[]');

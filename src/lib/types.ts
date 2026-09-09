@@ -31,17 +31,27 @@ export interface RuntimeRow {
   release: RuntimeReleaseRef;
 }
 
+export interface PayloadPlatform {
+  platform: string;
+  artifact: string | null;
+  sha256: string | null;
+}
+
 export interface PayloadVersion {
   version: string;
   entrypoints: string[];
   runtime_requirement: string | null;
-  platforms: string[];
+  platforms: PayloadPlatform[];
   artifact_url: string | null;
   sha256: string | null;
 }
 
 export interface PayloadRow {
   name: string;
+  // Flowed from the registries (feedstock's own payload kind; summary from
+  // the feedstock registry or the org index catalog) — never authored here.
+  kind: string | null;
+  summary: string | null;
   registry_repo: string;
   registry_url: string;
   versions: PayloadVersion[];
