@@ -1,8 +1,7 @@
 import rss from '@astrojs/rss';
-import type { VersionsData } from '../lib/types';
-import data from '../data/versions.json';
+import { loadVersions } from '../lib/data';
 
-const v = data as unknown as VersionsData;
+const v = loadVersions();
 
 export async function GET(context: { site: URL }) {
   // Honest framing (plan 05): the site is stateless across builds, so the

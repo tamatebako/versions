@@ -4,6 +4,7 @@ import { envName, badge } from '../../lib/format';
 import PinSnippet from '../../components/PinSnippet.astro';
 import '../../styles/tokens.css';
 import '../../styles/base.css';
+import BasePage from '../../layouts/BasePage.astro';
 
 export async function getStaticPaths() {
   return (await import('../../lib/paths')).payloadRoutes();
@@ -12,25 +13,11 @@ export async function getStaticPaths() {
 const { payload, versions } = Astro.props;
 
 const payloadBadge = badge('tebako payload', `${payload.name} ${versions[0]?.version ?? ''}`);
+const P_TITLE = `${payload.name} — tebako versions`;
+const P_DESC = payload.summary ?? `Every version of the ${payload.name} payload — entrypoints, platforms, sha256s.`;
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="robots" content="index,follow" />
-    <title>{payload.name} — tebako versions</title>
-    <link rel="icon" type="image/svg+xml" href="/versions/favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
-    />
-  </head>
-
-  <body class="tv-grain">
+<BasePage title={P_TITLE} description={P_DESC}>
     <main class="page">
       <header class="hero">
         <p class="eyebrow"><a href="/versions/">← catalog</a></p>
@@ -109,8 +96,7 @@ const payloadBadge = badge('tebako payload', `${payload.name} ${versions[0]?.ver
         ))
       }
     </main>
-  </body>
-</html>
+  </BasePage>
 
 <style is:global>
   /* payload-page-specific; shared language in styles/base.css */

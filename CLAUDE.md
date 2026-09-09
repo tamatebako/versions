@@ -38,6 +38,17 @@ intermittent captive portal — see retry law below).
 
 ## Architecture
 
+Module map (who owns what):
+
+- `tools/lib/` — the collector's pure, test-covered modules: `grammar.ts` (asset-name grammars), `registry.ts` (feedstock registry → rows, index-catalog harvest, SHA256SUMS parse), `validate.ts` (schema checks). `tools/collect.ts` keeps the network plane collection and imports these.
+- `src/lib/` — the site's model: `groups.ts` (line/payload catalog model — the index and detail pages consume it), `format.ts` (display derivations: mib/relAge/envName/badge), `capabilities.ts` (chip derivation fallback), `gates.ts` (3 MiB gate), `data.ts` (`loadVersions()` — the only versions.json import), `paths.ts` (static-route computation for detail pages), `types.ts` (the VersionsData schema).
+- `src/styles/` — `tokens.css` (tebako.org parity tokens) then `base.css` (shared scaffold/table/chip language); pages carry only page-specific rules.
+- `src/layouts/BasePage.astro` — the document scaffold (fonts, meta, favicon) for every page.
+- `src/components/PinSnippet.astro` — pin blocks + the copy behavior (works on every page that renders it).
+- Tests: `npm test` (node:test, stdlib only) — pure modules' interface is the test surface; wired into CI.
+
+## Architecture
+
 One static Astro site (`output: 'static'`, `site: https://www.tebako.org`,
 `base: '/versions'`, TypeScript strict). No server, no runtime JSON API, no
 database. Build-time pipeline only:
