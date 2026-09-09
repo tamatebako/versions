@@ -1,0 +1,178 @@
+---
+import type { VersionsData } from '../../lib/types';
+import { deriveCapabilityChips } from '../../lib/capabilities';
+import { lineViews, lineSlug } from '../../lib/groups';
+import PinSnippet from '../../components/PinSnippet.astro';
+import '../../styles/tokens.css';
+import data from '../../data/versions.json';
+
+const v = data as unknown as VersionsData;
+
+// getStaticPaths runs in isolation (no module-scope bindings) — import inside.
+export async function getStaticPaths() {
+  const { lineViews } = await import('../../lib/groups');
+  const mod = (await import('../../data/versions.json')).default as unknown as VersionsData;
+  return lineViews(mod).map((g) => ({ params: { line: g.slug }, props: { view: g } }));
+}
+
+const { view } = Astro.props;
+const views = lineViews(v);
+const generated = new Date(v.generated_at);
+const mib = (bytes: number): string => (bytes / 1_048_576).toFixed(1);
+
+function relAge(iso: string): string {
+  const h = Math.floor((generated.getTime() - new Date(iso).getTime()) / 3_600_000);
+  if (h < 1) return 'just now';
+  if (h < 24) return `${h} h ago`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? '1 day ago' : `${d} days ago`;
+}
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="index,follow" />
+    <title>{view.engine} {view.lang}{view.flavor ? `-${view.flavor}` : ''} — tebako versions</title>
+    <link rel="icon" type="image/svg+xml" href="/versions/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+  </head>
+
+  <body class="tv-grain">
+    <main class="page">
+      <header class="hero">
+        <p class="eyebrow"><a href="/versions/">← catalog</a></p>
+        <h1>{view.engine} {view.lang}{view.flavor && <span class="chip chip-flavor">{view.flavor}</span>}</h1>
+        <p class="lede">
+          {view.releaseCount} release{view.releaseCount === 1 ? '' : 's'} · {view.tripletCount} platforms · current
+          tebako line <a href={view.groups[0].release.url}>{view.latestTebako}</a>
+        </p>
+        <p class="stamp">Built {v.generated_at.slice(0, 10)} {v.generated_at.slice(11, 16)} UTC · <a href="https://www.tebako.org/">tebako.org</a></p>
+      </header>
+
+      {
+        view.groups.map((g) => (
+          <section class:list={['section', { current: g.isLatest, older: !g.isLatest }]}>
+            <div class="group-head">
+              <h2>
+                tebako <a href={g.release.url}>{g.tebakoLine}</a>
+              </h2>
+              <span class="group-meta">
+                {relAge(g.release.published_at)}
+                {g.release.prerelease && <span class="chip chip-pre" title="prerelease">pre</span>}
+                {g.isLatest && <span class="chip chip-flowed">current</span>}
+              </span>
+              <PinSnippet
+                snippets={[
+                  { hint: 'reference', code: g.rows[0].reference },
+                  {
+                    hint: 'config.yaml',
+                    code: `runtimes:\n  ${view.engine}: { version: ${view.lang}, tebako: ${g.tebakoLine} }`,
+                  },
+                ]}
+              />
+            </div>
+            <div class="tablewrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">platform</th>
+                    <th scope="col">capabilities</th>
+                    <th scope="col">exe / image MiB</th>
+                    <th scope="col">downloads</th>
+                    <th scope="col">sha256 (exe)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {g.rows.map((r) => {
+                    const chips = deriveCapabilityChips(r);
+                    return (
+                      <tr>
+                        <td>
+                          <span class="chip chip-platform">{r.triplet}</span>
+                        </td>
+                        <td>
+                          {r.capabilities !== null
+                            ? r.capabilities.map((c) => (
+                                <span class="chip chip-cap chip-flowed" title="flowed from the factory's published runtime manifest">
+                                  {c}
+                                </span>
+                              ))
+                            : chips.map((c) => (
+                                <a class="chip chip-cap" href="/versions/#cap-rules" title={c.note}>
+                                  {c.label}
+                                </a>
+                              ))}
+                        </td>
+                        <td class="mono num">
+                          {r.exe ? mib(r.exe.size) : '—'} / {r.image ? mib(r.image.size) : '—'}
+                        </td>
+                        <td class="num">{r.exe ? r.exe.downloads : '—'}</td>
+                        <td class="mono sha" title={r.exe?.sha256 ?? 'no checksum fetched for older releases'}>
+                          {r.exe?.sha256 ? r.exe.sha256.slice(0, 12) : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ))
+      }
+
+      <p class="footer-note">
+        Other lines: {' '}
+        {views
+          .filter((o) => o.engine === view.engine && o.slug !== view.slug)
+          .map((o) => (
+            <a href={`/versions/runtime/${lineSlug(o.engine, o.lang, o.flavor)}`}>
+              {o.lang}
+              {o.flavor ? `-${o.flavor}` : ''}
+            </a>
+          ))
+          .concat(views.filter((o) => o.engine !== view.engine).map((o) => <a href={`/versions/runtime/${o.slug}`}>{o.engine}</a>))}
+      </p>
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  .page { position: relative; z-index: 1; max-width: 72rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+  .hero { margin-bottom: 2rem; }
+  .eyebrow { margin: 0 0 0.35rem; font-family: var(--tv-font-mono); font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; }
+  .eyebrow a { color: var(--tv-accent); }
+  h1 { margin: 0; font-family: var(--tv-font-display); font-weight: 600; font-size: clamp(2rem, 4.5vw, 3rem); line-height: 1.1; letter-spacing: -0.02em; color: var(--tv-text-1); display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .lede { margin: 0.6rem 0 0; color: var(--tv-text-2); }
+  .stamp { margin: 0.7rem 0 0; font-family: var(--tv-font-mono); font-size: 0.8125rem; color: var(--tv-text-3); }
+  .section { margin-top: 2rem; }
+  .section.older { opacity: 0.88; }
+  .group-head { display: flex; align-items: baseline; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+  .group-head h2 { margin: 0; font-family: var(--tv-font-display); font-weight: 600; font-size: 1.375rem; letter-spacing: -0.01em; color: var(--tv-text-1); }
+  .group-meta { font-family: var(--tv-font-mono); font-size: 0.75rem; color: var(--tv-text-3); display: inline-flex; gap: 0.4rem; align-items: center; }
+  .tablewrap { border: 1px solid var(--tv-card-border); border-radius: var(--tv-radius-card); background: var(--tv-card); box-shadow: var(--tv-shadow-card); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; min-width: 40rem; }
+  thead th { font-family: var(--tv-font-mono); font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; text-align: left; color: var(--tv-text-3); padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--tv-divider-strong); background: var(--tv-bg-soft); white-space: nowrap; }
+  td { padding: 0.55rem 0.9rem; border-bottom: 1px solid var(--tv-divider); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--tv-bg-soft); }
+  .mono { font-family: var(--tv-font-mono); font-size: 0.8125rem; white-space: nowrap; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.num { text-align: right; }
+  .sha { color: var(--tv-text-2); }
+  .chip { display: inline-block; font-family: var(--tv-font-mono); font-size: 0.6875rem; line-height: 1; padding: 0.28rem 0.55rem; border-radius: 999px; border: 1px solid var(--tv-divider-strong); color: var(--tv-text-2); white-space: nowrap; }
+  .chip-platform { background: var(--tv-bg-warm); }
+  .chip-flavor { border-color: var(--tv-accent); color: var(--tv-accent); }
+  .chip-pre { border-color: var(--tv-chip-bad-border); color: var(--tv-chip-bad-ink); }
+  a.chip-cap { border-style: dotted; text-decoration: none; cursor: help; }
+  a.chip-cap:hover { border-color: var(--tv-accent); color: var(--tv-accent); }
+  .chip-flowed { border-style: solid; border-color: var(--tv-accent); color: var(--tv-accent); }
+  .footer-note { margin-top: 3rem; font-family: var(--tv-font-mono); font-size: 0.8125rem; color: var(--tv-text-3); display: flex; gap: 0.9rem; flex-wrap: wrap; }
+</style>

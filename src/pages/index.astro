@@ -63,13 +63,15 @@ for (const g of lineGroups) {
 
 interface PayloadView {
   name: string;
+  kind: string | null;
+  summary: string | null;
   registryRepo: string;
   registryUrl: string;
   latestVersion: string;
   versionCount: number;
   entrypoints: string[];
   runtimeRequirement: string | null;
-  platforms: string[];
+  platformCount: number;
 }
 
 const payloads: PayloadView[] = v.payloads.map((p) => {
@@ -84,15 +86,28 @@ const payloads: PayloadView[] = v.payloads.map((p) => {
   };
   return {
     name: p.name,
+    kind: p.kind,
+    summary: p.summary,
     registryRepo: p.registry_repo,
     registryUrl: p.registry_url,
     latestVersion: latest.version,
     versionCount: p.versions.length,
     entrypoints: latest.entrypoints,
     runtimeRequirement: latest.runtime_requirement,
-    platforms: latest.platforms,
+    platformCount: latest.platforms.length,
   };
 });
+
+// Kinds are the registries' own vocabulary (app / toolkit / runtime): payload
+// rows are grouped by kind, apps first.
+const KIND_ORDER = ['app', 'toolkit', 'runtime'];
+const kindRank = (k: string): number => {
+  const i = KIND_ORDER.indexOf(k);
+  return i === -1 ? 99 : i;
+};
+const payloadKindGroups = [...new Set(payloads.map((p) => p.kind ?? 'other'))]
+  .sort((a, b) => kindRank(a) - kindRank(b) || a.localeCompare(b))
+  .map((kind) => ({ kind, rows: payloads.filter((p) => (p.kind ?? 'other') === kind) }));
 
 const envName = (tool: string): string => `TEBAKO_${tool.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_VERSION`;
 
@@ -208,12 +223,12 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
                           ]}
                         />
                       )}
-                      {g.older.length > 0 && (
-                        <details class="older">
-                          <summary>all releases in this line ({g.older.length + 1})</summary>
-                          <p class="older-list">{g.older.join(' · ')}</p>
-                        </details>
-                      )}
+                      <a
+                        class="line-all"
+                        href={`/versions/runtime/${g.engine}-${g.lang}${g.flavor ? `-${g.flavor}` : ''}`}
+                      >
+                        all releases ({g.older.length + 1}) ↗
+                      </a>
                     </th>
                   </tr>
                   {g.rows.map((r) => {
@@ -288,22 +303,34 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
                 <th scope="col">pin</th>
               </tr>
             </thead>
-            <tbody>
-              {
-                payloads.map((p) => (
-                  <tr
-                    class="payload-row"
-                    data-filter={[p.name, p.latestVersion, p.runtimeRequirement ?? '', ...p.entrypoints].join(' ')}
-                  >
-                    <td class="name">{p.name}</td>
+            {
+              payloadKindGroups.map((kg) => (
+                <tbody
+                  class="kind"
+                  data-filter={kg.rows.map((p) => `${p.name} ${p.kind ?? ''} ${p.latestVersion}`).join(' ')}
+                >
+                  <tr class="kind-head">
+                    <th colspan="8" scope="rowgroup">
+                      {kg.kind}s ({kg.rows.length})
+                    </th>
+                  </tr>
+                  {kg.rows.map((p) => (
+                    <tr
+                      class="payload-row"
+                      data-filter={[p.name, p.kind ?? '', p.latestVersion, p.runtimeRequirement ?? '', ...p.entrypoints].join(' ')}
+                    >
+                      <td class="name">
+                        <a href={`/versions/payload/${p.name}`}>{p.name}</a>
+                        {p.summary && <span class="name-summary">{p.summary}</span>}
+                      </td>
                     <td class="mono">{p.latestVersion}</td>
                     <td class="num">{p.versionCount}</td>
                     <td class="num" title={p.entrypoints.join(', ') || '—'}>
                       {p.entrypoints.length} {p.entrypoints.length > 0 && <span class="entry-first">· {p.entrypoints[0]}</span>}
                     </td>
                     <td class="mono">{p.runtimeRequirement ?? '—'}</td>
-                    <td class="num" title={p.platforms.join(', ')}>
-                      {p.platforms.length}
+                    <td class="num">
+                      {p.platformCount}
                     </td>
                     <td>
                       <a href={p.registryUrl}>{p.registryRepo}</a>
@@ -317,11 +344,12 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
                           ]}
                         />
                       )}
-                    </td>
-                  </tr>
-                ))
-              }
-            </tbody>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              ))
+            }
           </table>
         </div>
         {payloadBadge && (
@@ -733,6 +761,35 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
     color: var(--tv-text-2);
   }
 
+  .kind-head th {
+    background: var(--tv-bg-warm);
+    border-bottom: 1px solid var(--tv-divider-strong);
+    padding: 0.6rem 0.9rem;
+    font-family: var(--tv-font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--tv-accent);
+  }
+  .name-summary {
+    display: block;
+    font-size: 0.75rem;
+    font-family: var(--tv-font-sans);
+    font-weight: 400;
+    color: var(--tv-text-3);
+    white-space: normal;
+    max-width: 26rem;
+  }
+  a.line-all {
+    font-family: var(--tv-font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
+    color: var(--tv-text-3);
+  }
+  a.line-all:hover {
+    color: var(--tv-accent);
+  }
   .payload-row .name {
     font-weight: 600;
     color: var(--tv-text-1);

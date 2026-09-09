@@ -1,0 +1,153 @@
+---
+import type { VersionsData } from '../../lib/types';
+import { payloadVersionsDesc } from '../../lib/groups';
+import PinSnippet from '../../components/PinSnippet.astro';
+import '../../styles/tokens.css';
+import data from '../../data/versions.json';
+
+const v = data as unknown as VersionsData;
+
+// getStaticPaths runs in isolation (no module-scope bindings) — import inside.
+export async function getStaticPaths() {
+  const { payloadVersionsDesc } = await import('../../lib/groups');
+  const mod = (await import('../../data/versions.json')).default as unknown as VersionsData;
+  return mod.payloads.map((p) => ({
+    params: { name: p.name },
+    props: { payload: p, versions: payloadVersionsDesc(p) },
+  }));
+}
+
+const { payload, versions } = Astro.props;
+
+const envName = (tool: string): string => `TEBAKO_${tool.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_VERSION`;
+const badge = `[![tebako payload](https://img.shields.io/badge/tebako%20payload-${encodeURIComponent(`${payload.name} ${versions[0]?.version ?? ''}`)}-blue)](https://www.tebako.org/versions)`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="index,follow" />
+    <title>{payload.name} — tebako versions</title>
+    <link rel="icon" type="image/svg+xml" href="/versions/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+  </head>
+
+  <body class="tv-grain">
+    <main class="page">
+      <header class="hero">
+        <p class="eyebrow"><a href="/versions/">← catalog</a></p>
+        <h1>
+          {payload.name}
+          {payload.kind && <span class="chip chip-flavor">{payload.kind}</span>}
+        </h1>
+        {payload.summary && <p class="lede">{payload.summary}</p>}
+        <p class="stamp">
+          {versions.length} version{versions.length === 1 ? '' : 's'} · registry:
+          <a href={payload.registry_url}>{payload.registry_repo}</a> ·
+          <a href="https://www.tebako.org/">tebako.org</a>
+        </p>
+        <div class="hero-pins">
+          <PinSnippet snippets={[{ hint: 'badge markdown', code: badge }]} />
+        </div>
+      </header>
+
+      {
+        versions.map((ver, i) => (
+          <section class:list={['section', { current: i === 0, older: i > 0 }]}>
+            <div class="group-head">
+              <h2>{ver.version}</h2>
+              {i === 0 && <span class="chip chip-flowed">latest</span>}
+              <span class="group-meta mono">{ver.runtime_requirement ?? 'runtime: —'}</span>
+            </div>
+
+            {ver.entrypoints.length > 0 && (
+              <div class="block">
+                <p class="block-label">entrypoints — pin any</p>
+                <PinSnippet
+                  snippets={[
+                    ...ver.entrypoints.map((tool) => ({
+                      hint: `env ${tool}`,
+                      code: `${envName(tool)}=${ver.version}`,
+                    })),
+                    ...(ver.entrypoints[0]
+                      ? [{ hint: 'shim verb', code: `tebako-shim use ${ver.entrypoints[0]} ${ver.version}` }]
+                      : []),
+                  ]}
+                />
+              </div>
+            )}
+
+            {ver.platforms.length > 0 && (
+              <div class="tablewrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th scope="col">platform</th>
+                      <th scope="col">artifact</th>
+                      <th scope="col">sha256</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ver.platforms.map((pf) => (
+                      <tr>
+                        <td>
+                          <span class="chip chip-platform">{pf.platform}</span>
+                        </td>
+                        <td class="mono artifact">{pf.artifact ?? '—'}</td>
+                        <td>
+                          {pf.sha256 ? (
+                            <PinSnippet snippets={[{ hint: pf.platform, code: pf.sha256 }]} />
+                          ) : (
+                            <span class="mono sha">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        ))
+      }
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  .page { position: relative; z-index: 1; max-width: 72rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+  .hero { margin-bottom: 2rem; }
+  .eyebrow { margin: 0 0 0.35rem; font-family: var(--tv-font-mono); font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; }
+  .eyebrow a { color: var(--tv-accent); }
+  h1 { margin: 0; font-family: var(--tv-font-display); font-weight: 600; font-size: clamp(2rem, 4.5vw, 3rem); line-height: 1.1; letter-spacing: -0.02em; color: var(--tv-text-1); display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .lede { margin: 0.6rem 0 0; max-width: 46rem; color: var(--tv-text-2); }
+  .stamp { margin: 0.7rem 0 0; font-family: var(--tv-font-mono); font-size: 0.8125rem; color: var(--tv-text-3); }
+  .hero-pins { margin-top: 1rem; }
+  .section { margin-top: 2rem; }
+  .section.older { opacity: 0.88; }
+  .group-head { display: flex; align-items: baseline; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+  .group-head h2 { margin: 0; font-family: var(--tv-font-display); font-weight: 600; font-size: 1.375rem; color: var(--tv-text-1); }
+  .group-meta { font-size: 0.75rem; color: var(--tv-text-3); }
+  .block { margin-bottom: 0.9rem; }
+  .block-label { margin: 0 0 0.3rem; font-family: var(--tv-font-mono); font-size: 0.6875rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--tv-text-3); }
+  .tablewrap { border: 1px solid var(--tv-card-border); border-radius: var(--tv-radius-card); background: var(--tv-card); box-shadow: var(--tv-shadow-card); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; min-width: 36rem; }
+  thead th { font-family: var(--tv-font-mono); font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; text-align: left; color: var(--tv-text-3); padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--tv-divider-strong); background: var(--tv-bg-soft); white-space: nowrap; }
+  td { padding: 0.55rem 0.9rem; border-bottom: 1px solid var(--tv-divider); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--tv-bg-soft); }
+  .mono { font-family: var(--tv-font-mono); font-size: 0.8125rem; }
+  .artifact { white-space: nowrap; color: var(--tv-text-2); }
+  .sha { color: var(--tv-text-2); }
+  .chip { display: inline-block; font-family: var(--tv-font-mono); font-size: 0.6875rem; line-height: 1; padding: 0.28rem 0.55rem; border-radius: 999px; border: 1px solid var(--tv-divider-strong); color: var(--tv-text-2); white-space: nowrap; }
+  .chip-platform { background: var(--tv-bg-warm); }
+  .chip-flavor { border-color: var(--tv-accent); color: var(--tv-accent); }
+  .chip-flowed { border-style: solid; border-color: var(--tv-accent); color: var(--tv-accent); }
+</style>
