@@ -79,3 +79,30 @@ const { snippets } = Astro.props;
     border-color: var(--tv-chip-ok-border);
   }
 </style>
+
+<script>
+  // Copy behavior lives with the component that renders the buttons — every
+  // page gets it, not just the one that declared it first.
+  document.addEventListener('click', async (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-copy]');
+    if (!btn) return;
+    const code = btn.parentElement?.querySelector<HTMLElement>('[data-copy-code]');
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code.textContent ?? '');
+      btn.textContent = 'copied';
+    } catch {
+      const range = document.createRange();
+      range.selectNodeContents(code);
+      const sel = getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+      btn.textContent = 'selected';
+    }
+    btn.setAttribute('data-flash', '');
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.removeAttribute('data-flash');
+    }, 1600);
+  });
+</script>

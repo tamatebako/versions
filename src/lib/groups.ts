@@ -82,3 +82,73 @@ export function lineViews(v: VersionsData): LineView[] {
 export function payloadVersionsDesc(p: PayloadRow): PayloadRow['versions'] {
   return [...p.versions].sort((a, b) => -cmpVersions(a.version, b.version));
 }
+
+export interface PayloadView {
+  name: string;
+  kind: string | null;
+  summary: string | null;
+  registryRepo: string;
+  registryUrl: string;
+  latestVersion: string;
+  versionCount: number;
+  entrypoints: string[];
+  runtimeRequirement: string | null;
+  platformCount: number;
+}
+
+export function payloadViews(v: VersionsData): PayloadView[] {
+  return [...v.payloads]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((p) => {
+      const latest = payloadVersionsDesc(p)[0] ?? {
+        version: '—',
+        entrypoints: [],
+        runtime_requirement: null,
+        platforms: [],
+      };
+      return {
+        name: p.name,
+        kind: p.kind,
+        summary: p.summary,
+        registryRepo: p.registry_repo,
+        registryUrl: p.registry_url,
+        latestVersion: latest.version,
+        versionCount: p.versions.length,
+        entrypoints: latest.entrypoints,
+        runtimeRequirement: latest.runtime_requirement,
+        platformCount: latest.platforms.length,
+      };
+    });
+}
+
+// Kinds are the registries' own vocabulary (app / toolkit / runtime): rows
+// group by kind, apps first.
+const KIND_ORDER = ['app', 'toolkit', 'runtime'];
+
+export interface PayloadKindGroup {
+  kind: string;
+  rows: PayloadView[];
+}
+
+export function payloadKindGroups(views: PayloadView[]): PayloadKindGroup[] {
+  const rank = (k: string): number => {
+    const i = KIND_ORDER.indexOf(k);
+    return i === -1 ? 99 : i;
+  };
+  return [...new Set(views.map((p) => p.kind ?? 'other'))]
+    .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
+    .map((kind) => ({ kind, rows: views.filter((p) => (p.kind ?? 'other') === kind) }));
+}
+
+// The headline row per engine for the index badge snippets: highest lang
+// version of the latest-in-line rows.
+export function latestLinePerEngine(v: VersionsData): RuntimeRow[] {
+  return [...new Set(v.runtimes.map((r) => r.engine))].map((engine) => {
+    const rows = v.runtimes.filter((r) => r.engine === engine && r.latest_in_line);
+    return [...rows].sort(
+      (a, b) =>
+        -cmpVersions(a.lang_version, b.lang_version) ||
+        (a.flavor ?? '').localeCompare(b.flavor ?? ''),
+    )[0];
+  });
+}

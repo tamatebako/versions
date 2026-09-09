@@ -1,0 +1,210 @@
+/*
+ * tebako versions — the shared component language: page scaffold, table
+ * language, chips. Every page imports this after tokens.css; page templates
+ * carry only their own rules. (Class names are the interface; one
+ * implementation — a visual tweak is one edit, not three.)
+ */
+
+.page {
+  position: relative;
+  z-index: 1;
+  max-width: var(--tv-page-width, 72rem);
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+.hero {
+  margin-bottom: 2rem;
+  animation: hero-rise 0.7s var(--tv-ease-out-quint) both;
+}
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  font-family: var(--tv-font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--tv-accent);
+}
+.eyebrow a {
+  color: var(--tv-accent);
+}
+
+.lede {
+  margin: 0.6rem 0 0;
+  max-width: 46rem;
+  color: var(--tv-text-2);
+}
+
+.stamp {
+  margin: 0.7rem 0 0;
+  font-family: var(--tv-font-mono);
+  font-size: 0.8125rem;
+  color: var(--tv-text-3);
+}
+
+.section {
+  margin-top: 2rem;
+}
+.section h2 {
+  margin: 0 0 1rem;
+  font-family: var(--tv-font-display);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  color: var(--tv-text-1);
+}
+
+.group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+.group-head h2 {
+  margin: 0;
+  font-family: var(--tv-font-display);
+  font-weight: 600;
+  font-size: 1.375rem;
+  letter-spacing: -0.01em;
+  color: var(--tv-text-1);
+}
+.group-meta {
+  font-family: var(--tv-font-mono);
+  font-size: 0.75rem;
+  color: var(--tv-text-3);
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.tablewrap {
+  border: 1px solid var(--tv-card-border);
+  border-radius: var(--tv-radius-card);
+  background: var(--tv-card);
+  box-shadow: var(--tv-shadow-card);
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  min-width: var(--tv-table-min, 36rem);
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  font-family: var(--tv-font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--tv-text-3);
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--tv-divider-strong);
+  background: var(--tv-bg-soft);
+  white-space: nowrap;
+}
+
+td,
+tbody th {
+  padding: 0.55rem 0.9rem;
+  border-bottom: 1px solid var(--tv-divider);
+  vertical-align: top;
+}
+
+tbody:last-child tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:not(.line-head):not(.kind-head):hover td {
+  background: var(--tv-bg-soft);
+}
+
+.mono {
+  font-family: var(--tv-font-mono);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+td.num {
+  text-align: right;
+}
+
+.sha {
+  color: var(--tv-text-2);
+}
+
+.chip {
+  display: inline-block;
+  font-family: var(--tv-font-mono);
+  font-size: 0.6875rem;
+  line-height: 1;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--tv-divider-strong);
+  color: var(--tv-text-2);
+  white-space: nowrap;
+}
+.chip-platform {
+  background: var(--tv-bg-warm);
+}
+.chip-flavor {
+  border-color: var(--tv-accent);
+  color: var(--tv-accent);
+}
+.chip-pre {
+  border-color: var(--tv-chip-bad-border);
+  color: var(--tv-chip-bad-ink);
+  margin-left: 0.3rem;
+}
+a.chip-cap {
+  border-style: dotted;
+  border-color: var(--tv-divider-strong);
+  text-decoration: none;
+  cursor: help;
+}
+a.chip-cap:hover {
+  border-color: var(--tv-accent);
+  color: var(--tv-accent);
+}
+.chip-flowed {
+  border-style: solid;
+  border-color: var(--tv-accent);
+  color: var(--tv-accent);
+}
+.chip-gate.chip-ok {
+  background: var(--tv-chip-ok-bg);
+  border-color: var(--tv-chip-ok-border);
+  color: var(--tv-chip-ok-ink);
+}
+.chip-gate.chip-bad {
+  background: var(--tv-chip-bad-bg);
+  border-color: var(--tv-chip-bad-border);
+  color: var(--tv-chip-bad-ink);
+}
+
+@media (max-width: 48rem) {
+  .page {
+    padding: 1.5rem 0.75rem 3rem;
+  }
+}
