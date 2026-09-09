@@ -8,6 +8,7 @@ import { loadVersions } from '../lib/data';
 import PinSnippet from '../components/PinSnippet.astro';
 import '../styles/tokens.css';
 import '../styles/base.css';
+import BasePage from '../layouts/BasePage.astro';
 
 const v = loadVersions();
 const generated = new Date(v.generated_at);
@@ -54,27 +55,10 @@ const payloadBadge = payloads[0]
 const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0].version) : null;
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="robots" content="index,follow" />
-    <meta
-      name="description"
-      content="Catalog of tebako runtime, payload and toolchain releases — a static, read-only rendering of the published registries and factory releases."
-    />
-    <title>tebako versions</title>
-    <link rel="icon" type="image/svg+xml" href="/versions/favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
-    />
-  </head>
-
-  <body class="tv-grain">
+<BasePage
+  title="tebako versions"
+  description="Catalog of tebako runtime, payload and toolchain releases — a static, read-only rendering of the published registries and factory releases."
+>
     <main class="page">
       <header class="hero">
         <p class="eyebrow">catalog</p>
@@ -358,8 +342,7 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
         });
       }
     </script>
-  </body>
-</html>
+</BasePage>
 
 <style is:global>
   /* index-specific: the directory layout, filter, line/kind rows, footer.

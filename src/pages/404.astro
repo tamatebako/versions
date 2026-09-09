@@ -1,27 +1,19 @@
 ---
+import BasePage from '../layouts/BasePage.astro';
 import '../styles/tokens.css';
+import '../styles/base.css';
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="robots" content="noindex,follow" />
-    <title>not in the box — tebako versions</title>
-    <link rel="icon" type="image/svg+xml" href="/versions/favicon.svg" />
-  </head>
-  <body class="tv-grain">
-    <main class="missing">
-      <p class="eyebrow">empty drawer</p>
-      <h1>Not in the box</h1>
-      <p class="lede">This page doesn't exist. The catalog is one drawer up.</p>
-      <p class="links">
-        <a href="/versions/">tebako versions</a> · <a href="https://www.tebako.org/">tebako.org</a>
-      </p>
-    </main>
-  </body>
-</html>
+<BasePage title="not in the box — tebako versions" noindex>
+  <main class="missing">
+    <p class="eyebrow">empty drawer</p>
+    <h1>Not in the box</h1>
+    <p class="lede">This page doesn't exist. The catalog is one drawer up.</p>
+    <p class="links">
+      <a href="/versions/">tebako versions</a> · <a href="https://www.tebako.org/">tebako.org</a>
+    </p>
+  </main>
+</BasePage>
 
 <style is:global>
   .missing {
@@ -31,27 +23,6 @@ import '../styles/tokens.css';
     margin: 0 auto;
     padding: 6rem 1.25rem;
     text-align: center;
-  }
-  .eyebrow {
-    margin: 0 0 0.35rem;
-    font-family: var(--tv-font-mono);
-    font-size: 0.75rem;
-    font-weight: 500;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--tv-accent);
-  }
-  h1 {
-    margin: 0;
-    font-family: var(--tv-font-display);
-    font-weight: 600;
-    font-size: clamp(2rem, 6vw, 3rem);
-    line-height: 1.1;
-    color: var(--tv-text-1);
-  }
-  .lede {
-    margin: 0.75rem 0 0;
-    color: var(--tv-text-2);
   }
   .links {
     margin-top: 1.5rem;

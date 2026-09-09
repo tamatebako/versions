@@ -7,6 +7,7 @@
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
 import { parseRuntimeAsset, parseBootstrapAsset } from './lib/grammar.ts';
+import { parseShaSums, mapRegistry, harvestCatalogInfo, mergeCatalogInfo } from './lib/registry.ts';
 import { CollectError, need, validate } from './lib/validate.ts';
 import type {
   PayloadRow,
@@ -201,11 +202,7 @@ async function collectFactory(
     }
     const res = await fetchWithRetry(asset.browser_download_url);
     if (!res.ok) throw new CollectError(`collect: checksum ${asset.browser_download_url} -> HTTP ${res.status}`);
-    const map = new Map<string, string>();
-    for (const line of (await res.text()).split('\n')) {
-      const m = /^([0-9a-f]{64}) [ *](.+)$/.exec(line);
-      if (m) map.set(m[2], m[1]);
-    }
+    const map = parseShaSums(await res.text());
     statuses.push({
       url: asset.browser_download_url,
       kind: 'checksum',
@@ -306,66 +303,6 @@ interface GhRepo {
   default_branch: string;
 }
 
-function mapRegistry(doc: unknown, repo: string, url: string): PayloadRow[] {
-  const d = doc as { payloads?: unknown[] } | null;
-  if (!d || !Array.isArray(d.payloads)) return [];
-  const out: PayloadRow[] = [];
-  for (const p of d.payloads as Record<string, unknown>[]) {
-    if (typeof p?.name !== 'string') continue;
-    const versions: PayloadRow['versions'] = [];
-    for (const v of Array.isArray(p.versions) ? (p.versions as Record<string, unknown>[]) : []) {
-      const platformsObj =
-        v?.platforms && typeof v.platforms === 'object' ? (v.platforms as Record<string, Record<string, unknown>>) : {};
-      const platforms = Object.entries(platformsObj)
-        .map(([platform, entry]) => ({
-          platform,
-          artifact: typeof entry?.artifact === 'string' ? entry.artifact : null,
-          sha256: typeof entry?.sha256 === 'string' ? entry.sha256 : null,
-        }))
-        .sort((a, b) => a.platform.localeCompare(b.platform));
-      const req = v?.runtime_requirement as Record<string, unknown> | undefined;
-      versions.push({
-        version: String(v?.version ?? ''),
-        entrypoints: Array.isArray(v?.entrypoints) ? (v.entrypoints as unknown[]).map(String) : [],
-        runtime_requirement:
-          typeof req?.engine === 'string' && typeof req?.constraint === 'string'
-            ? `${req.engine} ${req.constraint}`
-            : null,
-        platforms,
-        // The registry carries artifact filenames + release refs, not absolute
-        // URLs — never guess one.
-        artifact_url: null,
-        sha256: platforms.length === 1 ? platforms[0].sha256 : null,
-      });
-    }
-    out.push({
-      name: p.name,
-      kind: typeof p?.kind === 'string' ? p.kind : null,
-      summary: typeof p?.summary === 'string' ? p.summary : null,
-      registry_repo: repo,
-      registry_url: url,
-      versions,
-    });
-  }
-  return out;
-}
-
-// The org index catalog (registry-of-registries): packages[] entries carry
-// per-package kind + human summaries — the description source for payloads
-// whose own feedstock registry doesn't spell one out.
-function harvestCatalogInfo(doc: unknown): Map<string, { kind: string | null; summary: string | null }> {
-  const d = doc as { packages?: unknown[] } | null;
-  const out = new Map<string, { kind: string | null; summary: string | null }>();
-  if (!d || !Array.isArray(d.packages)) return out;
-  for (const pkg of d.packages as Record<string, unknown>[]) {
-    if (typeof pkg?.name !== 'string') continue;
-    out.set(pkg.name, {
-      kind: typeof pkg.kind === 'string' ? pkg.kind : null,
-      summary: typeof pkg.summary === 'string' ? pkg.summary : null,
-    });
-  }
-  return out;
-}
 
 async function collectFeedstocks(
   cfg: SourcesConfig,
@@ -429,11 +366,7 @@ async function collectFeedstocks(
       if (!catalogEntries.has(name)) catalogEntries.set(name, entry);
     }
   }
-  for (const row of rows) {
-    const cat = catalogEntries.get(row.name);
-    row.kind = row.kind ?? cat?.kind ?? null;
-    row.summary = row.summary ?? cat?.summary ?? null;
-  }
+  mergeCatalogInfo(rows, catalogEntries);
   return { rows, probed: repos.length, skipped, pointer: pointerRegistries };
 }
 

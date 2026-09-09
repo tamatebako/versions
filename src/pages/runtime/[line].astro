@@ -6,6 +6,7 @@ import { mib, relAge } from '../../lib/format';
 import PinSnippet from '../../components/PinSnippet.astro';
 import '../../styles/tokens.css';
 import '../../styles/base.css';
+import BasePage from '../../layouts/BasePage.astro';
 
 export async function getStaticPaths() {
   return (await import('../../lib/paths')).runtimeRoutes();
@@ -15,25 +16,11 @@ const { view } = Astro.props;
 const v = loadVersions();
 const views = lineViews(v);
 const relAgeFrom = (iso: string): string => relAge(iso, new Date(v.generated_at));
+const R_TITLE = `${view.engine} ${view.lang}${view.flavor ? `-${view.flavor}` : ''} — tebako versions`;
+const R_DESC = `Every release of the ${view.engine} ${view.lang}${view.flavor ? `-${view.flavor}` : ''} runtime line — pins, sizes, sha256s per platform.`;
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="robots" content="index,follow" />
-    <title>{view.engine} {view.lang}{view.flavor ? `-${view.flavor}` : ''} — tebako versions</title>
-    <link rel="icon" type="image/svg+xml" href="/versions/favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
-    />
-  </head>
-
-  <body class="tv-grain">
+<BasePage title={R_TITLE} description={R_DESC}>
     <main class="page">
       <header class="hero">
         <p class="eyebrow"><a href="/versions/">← catalog</a></p>
@@ -129,8 +116,7 @@ const relAgeFrom = (iso: string): string => relAge(iso, new Date(v.generated_at)
           .concat(views.filter((o) => o.engine !== view.engine).map((o) => <a href={`/versions/runtime/${o.slug}`}>{o.engine}</a>))}
       </p>
     </main>
-  </body>
-</html>
+  </BasePage>
 
 <style is:global>
   /* line-page-specific; shared language in styles/base.css */
