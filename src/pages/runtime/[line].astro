@@ -1,6 +1,7 @@
 ---
 import { deriveCapabilityChips } from '../../lib/capabilities';
-import { lineViews, lineSlug } from '../../lib/groups';
+import { lineViews } from '../../lib/groups';
+import { linePath } from '../../lib/paths';
 import { loadVersions } from '../../lib/data';
 import { mib, relAge } from '../../lib/format';
 import PinSnippet from '../../components/PinSnippet.astro';
@@ -108,12 +109,12 @@ const R_DESC = `Every release of the ${view.engine} ${view.lang}${view.flavor ? 
         {views
           .filter((o) => o.engine === view.engine && o.slug !== view.slug)
           .map((o) => (
-            <a href={`/versions/runtime/${lineSlug(o.engine, o.lang, o.flavor)}`}>
+            <a href={linePath(o.engine, o.lang, o.flavor)}>
               {o.lang}
               {o.flavor ? `-${o.flavor}` : ''}
             </a>
           ))
-          .concat(views.filter((o) => o.engine !== view.engine).map((o) => <a href={`/versions/runtime/${o.slug}`}>{o.engine}</a>))}
+          .concat(views.filter((o) => o.engine !== view.engine).map((o) => <a href={linePath(o.engine, o.lang, o.flavor)}>{o.engine}</a>))}
       </p>
     </main>
   </BasePage>
