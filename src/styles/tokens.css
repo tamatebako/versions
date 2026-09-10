@@ -42,6 +42,9 @@
   --tv-accent-hover: var(--tv-color-vermillion-deep);
   --tv-divider: rgba(6, 57, 74, 0.12);
   --tv-divider-strong: rgba(6, 57, 74, 0.2);
+  /* AA-safe accent for TEXT (links, chips, eyebrows): the vivid vermillion
+     is 3.7:1 on paper — decoration keeps it, readable text uses this */
+  --tv-accent-text: #a84e32;
   --tv-shadow-card: 0 1px 3px rgba(6, 57, 74, 0.08), 0 8px 24px -8px rgba(6, 57, 74, 0.12);
   --tv-chip-ok-bg: rgba(47, 122, 89, 0.12);
   --tv-chip-ok-ink: #2f7a59;
@@ -64,6 +67,7 @@
     --tv-text-3: #7d9cab;
     --tv-accent: var(--tv-color-gold);
     --tv-accent-hover: var(--tv-color-amber);
+    --tv-accent-text: var(--tv-color-gold);
     --tv-divider: rgba(245, 237, 208, 0.12);
     --tv-divider-strong: rgba(245, 237, 208, 0.2);
     --tv-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 8px 24px -8px rgba(0, 0, 0, 0.4);
@@ -107,7 +111,7 @@ body {
 }
 
 a {
-  color: var(--tv-accent);
+  color: var(--tv-accent-text);
   text-decoration: none;
 }
 
