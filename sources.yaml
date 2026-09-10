@@ -1,16 +1,12 @@
 factories:
-  - { repo: tamatebako/tebako-runtime-ruby,   engine: ruby }
-  - { repo: tamatebako/tebako-runtime-python, engine: python }
-  - { repo: tamatebako/jruby,                 engine: jruby }
-  - { repo: tamatebako/truffleruby,           engine: truffleruby }
-  - { repo: tamatebako/openjdk,               engine: openjdk }
+  # Every official runtime factory follows the tebako-runtime-<engine> naming
+  # in the tamatebako org — discovery, not enumeration: a new runtime repo is
+  # adopted by the next build with no config change.
+  org: tamatebako
+  prefix: tebako-runtime-
 feedstocks:
   org: tebako-packages
   registry_file: tpkg-registry.yaml
-  # Runtime feedstocks live in the tamatebako org (spec 33 runtime-on-runtime):
-  # their in-repo registries carry the kind: runtime L3 rows (graalvm rides
-  # openjdk's registry).
-  repos: [tamatebako/jruby, tamatebako/truffleruby, tamatebako/openjdk]
 product:
   - { repo: tamatebako/tebako }
 triplets: [macos-arm64, macos-x86_64, linux-gnu-x86_64, linux-gnu-arm64,

@@ -22,8 +22,13 @@ const RAW_ROOT = 'https://raw.githubusercontent.com';
 const BACKOFF_S = [5, 15, 45];
 const TOKEN = process.env.GITHUB_TOKEN ?? '';
 
+interface FactoryRef {
+  repo: string;
+  engine: string;
+}
+
 interface SourcesConfig {
-  factories: { repo: string; engine: string }[];
+  factories: { org: string; prefix: string };
   feedstocks: { org: string; registry_file: string; repos?: string[] };
   product: { repo: string }[];
   triplets: string[];
@@ -32,7 +37,8 @@ interface SourcesConfig {
 
 function loadSources(): SourcesConfig {
   const cfg = parseYaml(readFileSync('sources.yaml', 'utf8')) as SourcesConfig;
-  need(Array.isArray(cfg?.factories) && cfg.factories.length > 0, 'sources.yaml: factories missing');
+  need(typeof cfg?.factories?.org === 'string', 'sources.yaml: factories.org missing');
+  need(typeof cfg?.factories?.prefix === 'string' && cfg.factories.prefix.length > 0, 'sources.yaml: factories.prefix missing');
   need(typeof cfg?.feedstocks?.org === 'string', 'sources.yaml: feedstocks.org missing');
   need(typeof cfg?.feedstocks?.registry_file === 'string', 'sources.yaml: feedstocks.registry_file missing');
   need(Array.isArray(cfg?.product) && cfg.product.length > 0, 'sources.yaml: product missing');
@@ -42,6 +48,20 @@ function loadSources(): SourcesConfig {
 }
 
 const sleep = (s: number) => new Promise<void>((r) => setTimeout(r, s * 1000));
+
+// Official runtime factories are the tamatebako org's tebako-runtime-<engine>
+// repos — discovered, never enumerated (a renamed or new runtime is adopted by
+// the next build). Sorted for deterministic output.
+async function discoverFactories(cfg: SourcesConfig): Promise<FactoryRef[]> {
+  const repos: { name: string }[] = await githubJson<{ name: string }[]>(
+    `/orgs/${cfg.factories.org}/repos?per_page=100`,
+  );
+  return repos
+    .map((r) => r.name)
+    .filter((name) => name.startsWith(cfg.factories.prefix))
+    .sort()
+    .map((name) => ({ repo: `${cfg.factories.org}/${name}`, engine: name.slice(cfg.factories.prefix.length) }));
+}
 
 // Retry per charter: 3 retries, 5/15/45 s backoff on 403-rate-limit / 5xx /
 // TLS / DNS, then a named failure. 404 is returned to the caller (feedstock
@@ -324,6 +344,7 @@ interface GhRepo {
 
 async function collectFeedstocks(
   cfg: SourcesConfig,
+  factoriesRef: FactoryRef[],
   statuses: SourceStatus[],
 ): Promise<{ rows: PayloadRow[]; probed: number; skipped: number; pointer: number }> {
   const repos: GhRepo[] = [];
@@ -335,11 +356,12 @@ async function collectFeedstocks(
       throw new CollectError(`collect: org ${cfg.feedstocks.org} exceeds 200 repos — widen pagination`);
     }
   }
-  // Runtime feedstocks in other orgs (spec 33): probe their in-repo
-  // registries explicitly — the org scan cannot see them.
+  // Runtime feedstocks (spec 33) live in the factories' org: probe their
+  // in-repo registries too — the kind: runtime L3 rows (graalvm rides
+  // openjdk's registry). Repos without the file count as skipped, not errors.
   const extra: GhRepo[] = [];
-  for (const repo of cfg.feedstocks.repos ?? []) {
-    const info = await githubJson<GhRepo & { full_name: string }>(`/repos/${repo}`);
+  for (const f of factoriesRef) {
+    const info = await githubJson<GhRepo & { full_name: string }>(`/repos/${f.repo}`);
     extra.push({ name: info.full_name, default_branch: info.default_branch });
   }
   const rows: PayloadRow[] = [];
@@ -459,13 +481,15 @@ async function main(): Promise<void> {
   }
   const cfg = loadSources();
   const statuses: SourceStatus[] = [];
+  const factories = await discoverFactories(cfg);
+  need(factories.length > 0, 'no tebako-runtime-* factories discovered in the org');
 
   const runtimes: RuntimeRow[] = [];
-  for (const f of cfg.factories) {
+  for (const f of factories) {
     runtimes.push(...(await collectFactory(f.repo, f.engine, cfg, statuses)));
   }
 
-  const feed = await collectFeedstocks(cfg, statuses);
+  const feed = await collectFeedstocks(cfg, factories, statuses);
 
   const toolchain: ToolchainRow[] = [];
   for (const p of cfg.product) {
