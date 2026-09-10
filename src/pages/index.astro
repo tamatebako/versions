@@ -181,8 +181,8 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
                         <td class="mono num">
                           {r.exe ? mib(r.exe.size) : '—'} / {r.image ? mib(r.image.size) : '—'}
                         </td>
-                        <td class="num">{r.exe ? r.exe.downloads : '—'}</td>
-                        <td class="num">{relAgeFrom(r.release.published_at)}</td>
+                        <td class="num">{r.exe ? r.exe.downloads.toLocaleString('en-US') : '—'}</td>
+                        <td class="num" title={r.release.published_at}>{relAgeFrom(r.release.published_at)}</td>
                         <td class="mono sha" title={r.exe?.sha256 ?? 'no checksum fetched for older releases'}>
                           {r.exe?.sha256 ? r.exe.sha256.slice(0, 12) : '—'}
                         </td>
@@ -307,14 +307,22 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
                     <td class="mono">{t.version}</td>
                     <td class="num">{relAgeFrom(t.published_at)}</td>
                     <td>
-                      <span class="gate-chips">
+                      <span class="gate-meters">
                         {t.bootstrap.map((b) => (
                           <span
-                            class={`chip chip-gate ${b.bytes < BOOTSTRAP_MAX_BYTES ? 'chip-ok' : 'chip-bad'}`}
-                            title={`${b.triplet}: ${b.bytes.toLocaleString('en-US')} bytes (gate ${BOOTSTRAP_MAX_BYTES.toLocaleString('en-US')})`}
+                            class="gate-meter"
+                            title={`${b.triplet}: ${b.bytes.toLocaleString('en-US')} of ${BOOTSTRAP_MAX_BYTES.toLocaleString('en-US')} bytes (${((b.bytes / BOOTSTRAP_MAX_BYTES) * 100).toFixed(0)}% of gate)`}
                           >
-                            {b.triplet.replace('linux-gnu-', 'gnu-').replace('linux-musl-', 'musl-')}{' '}
-                            {mib(b.bytes)}
+                            <span class="gate-meter-label">
+                              {b.triplet.replace('linux-gnu-', 'gnu-').replace('linux-musl-', 'musl-')}
+                              <b>{mib(b.bytes)}</b>
+                            </span>
+                            <span class="gate-meter-track">
+                              <span
+                                class:list={['gate-meter-fill', { over: b.bytes >= BOOTSTRAP_MAX_BYTES }]}
+                                style={`width: ${Math.min(100, (b.bytes / BOOTSTRAP_MAX_BYTES) * 100).toFixed(1)}%`}
+                              />
+                            </span>
                           </span>
                         ))}
                       </span>
@@ -486,10 +494,42 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
     color: var(--tv-accent-text);
   }
 
-  .gate-chips {
+  .gate-meters {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.3rem;
+    gap: 0.55rem 1.2rem;
+  }
+  .gate-meter {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 8.5rem;
+  }
+  .gate-meter-label {
+    font-family: var(--tv-font-mono);
+    font-size: 0.6875rem;
+    color: var(--tv-text-2);
+    white-space: nowrap;
+  }
+  .gate-meter-label b {
+    font-weight: 500;
+    color: var(--tv-text-1);
+  }
+  .gate-meter-track {
+    display: block;
+    height: 0.3125rem;
+    border-radius: 999px;
+    background: var(--tv-divider);
+    overflow: hidden;
+  }
+  .gate-meter-fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--tv-chip-ok-ink);
+  }
+  .gate-meter-fill.over {
+    background: var(--tv-chip-bad-ink);
   }
 
   .engine-head th {
