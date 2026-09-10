@@ -54,6 +54,21 @@ test('non-runtime assets and unknown triplets are rejected', () => {
   assert.strictEqual(parseRuntimeAsset('tebako-runtime-notaver-3.3.12-macos-arm64', TRIPLETS), null);
 });
 
+test('spec 33 shapes: 4-segment langVers and universal images', () => {
+  const exe = parseRuntimeAsset('tebako-runtime-2.5.0-10.1.1.0-linux-gnu-x86_64', TRIPLETS);
+  assert.deepStrictEqual(
+    { lang: exe?.langVer, triplet: exe?.triplet, kind: exe?.kind },
+    { lang: '10.1.1.0', triplet: 'linux-gnu-x86_64', kind: 'exe' },
+  );
+  const uni = parseRuntimeAsset('tebako-runtime-2.5.0-10.1.1.0-universal.tfs', TRIPLETS);
+  assert.deepStrictEqual(
+    { lang: uni?.langVer, triplet: uni?.triplet, kind: uni?.kind },
+    { lang: '10.1.1.0', triplet: 'universal', kind: 'image' },
+  );
+  // universal is images-only: a universal exe does not parse
+  assert.strictEqual(parseRuntimeAsset('tebako-runtime-2.5.0-10.1.1.0-universal', TRIPLETS), null);
+});
+
 test('bootstrap assets parse with version + triplet, sidecars skipped', () => {
   assert.deepStrictEqual(parseBootstrapAsset('tebako-bootstrap-2.5.0-macos-arm64', TRIPLETS), {
     version: '2.5.0',

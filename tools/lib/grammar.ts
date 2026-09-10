@@ -50,13 +50,20 @@ export function parseRuntimeAsset(name: string, triplets: string[]): ParsedAsset
       break;
     }
   }
-  if (triplet === null) return null;
+  if (triplet === null) {
+    // spec 33 universal runtime images: one artifact serves every triplet of
+    // the line (the composed runtime's triplet binding comes from its owner).
+    if (kind === 'image' && stem.endsWith('-universal')) triplet = 'universal';
+    else return null;
+  }
   const head = stem.slice(0, stem.length - triplet.length - 1);
   const dash = head.indexOf('-');
   if (dash < 0) return null;
   const tebakoVer = head.slice(0, dash);
   if (!/^\d+(\.\d+)+$/.test(tebakoVer)) return null;
-  const m = /^(\d+\.\d+(?:\.\d+)?)(?:-([a-z0-9]+))?$/.exec(head.slice(dash + 1));
+  // langVers carry as many segments as the language spells: jruby 10.1.1.0,
+  // graalvm 25.0.4.1, ruby 3.3.12 — all dotted numerics.
+  const m = /^(\d+(?:\.\d+)+)(?:-([a-z0-9]+))?$/.exec(head.slice(dash + 1));
   if (m === null) return null;
   return { tebakoVer, langVer: m[1], flavor: m[2] ?? null, triplet, kind };
 }

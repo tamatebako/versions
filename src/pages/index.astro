@@ -260,7 +260,7 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
                       {(() => {
                         const target = p.runtimeRequirement ? runtimeRequirementTarget(p.runtimeRequirement, v) : null;
                         return target ? (
-                          <a href={linePath(target.engine, target.lang, target.flavor)} title={`runtime line satisfying ${p.runtimeRequirement}`}>
+                          <a href={linePath(target.engine, target.lang, target.flavor)}>
                             {p.runtimeRequirement}
                           </a>
                         ) : (
