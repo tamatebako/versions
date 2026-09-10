@@ -45,6 +45,17 @@ const payloadKindGroupsList = payloadKindGroups(payloads);
 const buildStamp = `${v.generated_at.slice(0, 10)} ${v.generated_at.slice(11, 16)} UTC`;
 const okSources = v.sources.filter((s) => s.ok);
 
+// The hero's thesis is the ledger itself: scale + freshness, from the data.
+const engineLineCounts = lineViews(v).reduce((acc, lv) => {
+  acc[lv.engine] = (acc[lv.engine] ?? 0) + 1;
+  return acc;
+}, {} as Record<string, number>);
+const newestPublish = v.runtimes
+  .map((r) => r.release.published_at)
+  .concat(v.toolchain.map((t) => t.published_at))
+  .sort()
+  .at(-1);
+
 // Static shields.io badge snippets (plan 05): generated from the data at
 // build time, copied as markdown — no dynamic badge service.
 const latestLineBadges = latestLinePerEngine(v).map((best) =>
@@ -64,8 +75,12 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
       <header class="hero">
         <p class="eyebrow">catalog</p>
         <h1>tebako versions</h1>
-        <p class="lede">
-          Every published runtime, payload and toolchain release of the tebako ecosystem — find your line, copy its pin.
+        <p class="lede">Every published runtime, payload and toolchain release — find your line, copy its pin.</p>
+        <p class="ledger">
+          {Object.entries(engineLineCounts).map(([engine, n]) => <span>{n} {engine} lines</span>)}
+          <span>{payloads.length} payloads</span>
+          <span>{v.toolchain.length} tebako releases</span>
+          {newestPublish && <span>newest {relAgeFrom(newestPublish)}</span>}
         </p>
         <p class="stamp">
           Built {buildStamp} · <a href="https://www.tebako.org/">tebako.org</a>
@@ -74,6 +89,9 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
           <span class="filter-label">filter</span>
           <input id="filter" type="search" placeholder="ruby, 3.3.12, macos-arm64, metanorma…" autocomplete="off" />
         </label>
+        <p class="no-match" id="no-match" hidden>
+          No drawer matches <em id="no-match-q"></em> — <button type="button" id="no-match-clear">clear the filter</button>
+        </p>
         <noscript><style>.filter { display: none; }</style></noscript>
       </header>
 
@@ -329,19 +347,35 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
 
     <script>
       const input = document.getElementById('filter') as HTMLInputElement | null;
-      if (input) {
-        input.addEventListener('input', () => {
-          const q = input.value.trim().toLowerCase();
-          for (const el of document.querySelectorAll<HTMLElement>('[data-filter]')) {
-            el.toggleAttribute('hidden', q.length > 0 && !el.getAttribute('data-filter')!.toLowerCase().includes(q));
-          }
-          for (const section of document.querySelectorAll<HTMLElement>('[data-section]')) {
-            const targets = section.querySelectorAll<HTMLElement>('[data-filter]');
-            const anyVisible = [...targets].some((t) => !t.hasAttribute('hidden'));
-            section.toggleAttribute('hidden', q.length > 0 && !anyVisible);
-          }
-        });
-      }
+      const noMatch = document.getElementById('no-match');
+      const noMatchQ = document.getElementById('no-match-q');
+      const noMatchClear = document.getElementById('no-match-clear');
+      const apply = () => {
+        if (!input) return;
+        const q = input.value.trim().toLowerCase();
+        for (const el of document.querySelectorAll<HTMLElement>('[data-filter]')) {
+          el.toggleAttribute('hidden', q.length > 0 && !el.getAttribute('data-filter')!.toLowerCase().includes(q));
+        }
+        let anySection = false;
+        for (const section of document.querySelectorAll<HTMLElement>('[data-section]')) {
+          const targets = section.querySelectorAll<HTMLElement>('[data-filter]');
+          const anyVisible = [...targets].some((t) => !t.hasAttribute('hidden'));
+          anySection = anySection || anyVisible;
+          section.toggleAttribute('hidden', q.length > 0 && !anyVisible);
+        }
+        if (noMatch) {
+          noMatch.toggleAttribute('hidden', !(q.length > 0 && !anySection));
+          if (noMatchQ) noMatchQ.textContent = `“${input.value.trim()}”`;
+        }
+      };
+      input?.addEventListener('input', apply);
+      noMatchClear?.addEventListener('click', () => {
+        if (input) {
+          input.value = '';
+          apply();
+          input.focus();
+        }
+      });
     </script>
 </BasePage>
 
@@ -378,6 +412,15 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
     font-size: clamp(1.5rem, 3vw, 2rem);
   }
 
+  .ledger {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.1rem;
+    margin: 0.9rem 0 0;
+    font-family: var(--tv-font-mono);
+    font-size: 0.8125rem;
+    color: var(--tv-text-2);
+  }
   .badge-row {
     margin-top: 0.7rem;
   }

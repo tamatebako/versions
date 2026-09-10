@@ -22,7 +22,8 @@ const P_DESC = payload.summary ?? `Every version of the ${payload.name} payload 
       <header class="hero">
         <p class="eyebrow"><a href="/versions/">← catalog</a></p>
         <h1>
-          {payload.name}
+          <span class="h1-engine">payload</span>
+          <span class="h1-version">{payload.name}</span>
           {payload.kind && <span class="chip chip-flavor">{payload.kind}</span>}
         </h1>
         {payload.summary && <p class="lede">{payload.summary}</p>}
@@ -102,16 +103,26 @@ const P_DESC = payload.summary ?? `Every version of the ${payload.name} payload 
   /* payload-page-specific; shared language in styles/base.css */
   h1 {
     margin: 0;
+    line-height: 1.1;
+    color: var(--tv-text-1);
+    display: flex;
+    align-items: baseline;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+  }
+  .h1-engine {
+    font-family: var(--tv-font-mono);
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--tv-accent-text);
+  }
+  .h1-version {
     font-family: var(--tv-font-display);
     font-weight: 600;
     font-size: clamp(2rem, 4.5vw, 3rem);
-    line-height: 1.1;
     letter-spacing: -0.02em;
-    color: var(--tv-text-1);
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    flex-wrap: wrap;
   }
 
   .section.older {

@@ -25,7 +25,11 @@ const R_DESC = `Every release of the ${view.engine} ${view.lang}${view.flavor ? 
     <main class="page">
       <header class="hero">
         <p class="eyebrow"><a href="/versions/">← catalog</a></p>
-        <h1>{view.engine} {view.lang}{view.flavor && <span class="chip chip-flavor">{view.flavor}</span>}</h1>
+        <h1>
+          <span class="h1-engine">{view.engine}</span>
+          <span class="h1-version">{view.lang}</span>
+          {view.flavor && <span class="chip chip-flavor">{view.flavor}</span>}
+        </h1>
         <p class="lede">
           {view.releaseCount} release{view.releaseCount === 1 ? '' : 's'} · {view.tripletCount} platforms · current
           tebako line <a href={view.groups[0].release.url}>{view.latestTebako}</a>
@@ -35,6 +39,9 @@ const R_DESC = `Every release of the ${view.engine} ${view.lang}${view.flavor ? 
           <span class="filter-label">filter</span>
           <input id="filter" type="search" placeholder="musl, 0.16.21, yjit…" autocomplete="off" />
         </label>
+        <p class="no-match" id="no-match" hidden>
+          No drawer matches <em id="no-match-q"></em> — <button type="button" id="no-match-clear">clear the filter</button>
+        </p>
         <noscript><style>.filter { display: none; }</style></noscript>
       </header>
 
@@ -130,16 +137,27 @@ const R_DESC = `Every release of the ${view.engine} ${view.lang}${view.flavor ? 
   /* line-page-specific; shared language in styles/base.css */
   h1 {
     margin: 0;
-    font-family: var(--tv-font-display);
-    font-weight: 600;
-    font-size: clamp(2rem, 4.5vw, 3rem);
     line-height: 1.1;
     letter-spacing: -0.02em;
     color: var(--tv-text-1);
     display: flex;
-    align-items: center;
-    gap: 0.6rem;
+    align-items: baseline;
+    gap: 0.65rem;
     flex-wrap: wrap;
+  }
+  .h1-engine {
+    font-family: var(--tv-font-mono);
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--tv-accent-text);
+  }
+  .h1-version {
+    font-family: var(--tv-font-display);
+    font-weight: 600;
+    font-size: clamp(2rem, 4.5vw, 3rem);
+    letter-spacing: -0.02em;
   }
 
   .section.older {
@@ -163,16 +181,32 @@ const R_DESC = `Every release of the ${view.engine} ${view.lang}${view.flavor ? 
 
 <script>
   const input = document.getElementById('filter') as HTMLInputElement | null;
-  if (input) {
-    input.addEventListener('input', () => {
-      const q = input.value.trim().toLowerCase();
-      for (const el of document.querySelectorAll<HTMLElement>('[data-filter]')) {
-        el.toggleAttribute('hidden', q.length > 0 && !el.getAttribute('data-filter')!.toLowerCase().includes(q));
-      }
-      for (const section of document.querySelectorAll<HTMLElement>('[data-section]')) {
-        const any = [...section.querySelectorAll<HTMLElement>('[data-filter]')].some((t) => !t.hasAttribute('hidden'));
-        section.toggleAttribute('hidden', q.length > 0 && !any);
-      }
-    });
-  }
+  const noMatch = document.getElementById('no-match');
+  const noMatchQ = document.getElementById('no-match-q');
+  const noMatchClear = document.getElementById('no-match-clear');
+  const apply = () => {
+    if (!input) return;
+    const q = input.value.trim().toLowerCase();
+    for (const el of document.querySelectorAll<HTMLElement>('[data-filter]')) {
+      el.toggleAttribute('hidden', q.length > 0 && !el.getAttribute('data-filter')!.toLowerCase().includes(q));
+    }
+    let anySection = false;
+    for (const section of document.querySelectorAll<HTMLElement>('[data-section]')) {
+      const any = [...section.querySelectorAll<HTMLElement>('[data-filter]')].some((t) => !t.hasAttribute('hidden'));
+      anySection = anySection || any;
+      section.toggleAttribute('hidden', q.length > 0 && !any);
+    }
+    if (noMatch) {
+      noMatch.toggleAttribute('hidden', !(q.length > 0 && !anySection));
+      if (noMatchQ) noMatchQ.textContent = `“${input.value.trim()}”`;
+    }
+  };
+  input?.addEventListener('input', apply);
+  noMatchClear?.addEventListener('click', () => {
+    if (input) {
+      input.value = '';
+      apply();
+      input.focus();
+    }
+  });
 </script>
