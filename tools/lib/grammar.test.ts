@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseRuntimeAsset, parseBootstrapAsset } from './grammar.ts';
+import { parseRuntimeAsset, parseBootstrapAsset, deriveTriplets } from './grammar.ts';
 
 const TRIPLETS = [
   'macos-arm64',
@@ -79,4 +79,26 @@ test('bootstrap assets parse with version + triplet, sidecars skipped', () => {
     triplet: 'windows-ucrt64',
   });
   assert.strictEqual(parseBootstrapAsset('tebako-bootstrap-2.5.0-macos-arm64.sha256', TRIPLETS), null);
+
+test('deriveTriplets: vocabulary elaborated from release asset names (SSOT)', () => {
+  const names = [
+    'manifest.json',
+    'SHA256SUMS.txt',
+    'tebako-runtime-0.16.22-3.3.12-macos-arm64',
+    'tebako-runtime-0.16.22-3.3.12-macos-arm64.tfs',
+    'tebako-runtime-0.16.22-3.3.12-macos-arm64.manifest.json',
+    'tebako-runtime-0.16.22-3.3.12-windows-ucrt64.exe',
+    'tebako-runtime-0.1.2-3.13.15-jit-linux-gnu-arm64.tfs',
+    'tebako-runtime-2.5.0-10.1.1.0-universal.tfs',
+    'tebako-runtime-2.5.0-10.1.1.0-linux-gnu-x86_64',
+  ];
+  assert.deepStrictEqual(deriveTriplets(names), [
+    'linux-gnu-arm64', // the jit flavor is correctly NOT part of the triplet
+    'linux-gnu-x86_64',
+    'macos-arm64',
+    'universal',
+    'windows-ucrt64',
+  ]);
+  assert.deepStrictEqual(deriveTriplets(['unrelated.txt']), []);
+});
 });
