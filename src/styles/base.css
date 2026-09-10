@@ -203,7 +203,29 @@ a.chip-cap:hover {
   color: var(--tv-chip-bad-ink);
 }
 
-  .filter {
+  .no-match {
+  margin: 0.9rem 0 0;
+  font-size: 0.9375rem;
+  color: var(--tv-text-2);
+}
+.no-match em {
+  font-style: normal;
+  font-family: var(--tv-font-mono);
+  color: var(--tv-text-1);
+}
+.no-match button {
+  font: inherit;
+  font-family: var(--tv-font-mono);
+  font-size: 0.8125rem;
+  color: var(--tv-accent-text);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.filter {
     display: flex;
     align-items: center;
     gap: 0.6rem;
