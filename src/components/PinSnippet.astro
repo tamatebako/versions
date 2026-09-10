@@ -31,8 +31,14 @@ const { snippets } = Astro.props;
     flex-direction: column;
     gap: 0.25rem;
     align-items: flex-start;
+    max-width: 100%;
+    min-width: 0;
   }
   .pin {
+    /* min-width: 0 through the chain lets a long pre-line shrink and scroll
+       inside instead of pushing the page past the viewport (mobile) */
+    min-width: 0;
+    max-width: 100%;
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
@@ -47,6 +53,7 @@ const { snippets } = Astro.props;
     flex: none;
   }
   .pin-code {
+    min-width: 0;
     font-size: 0.75rem;
     white-space: pre;
     overflow-x: auto;

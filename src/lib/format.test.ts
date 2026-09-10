@@ -59,6 +59,12 @@ test('validate accepts schema-shaped data', () => {
   validate(good);
 });
 
+test('validate refuses an empty runtimes plane (never publish an empty catalog)', () => {
+  const empty = structuredClone(good);
+  empty.runtimes = [];
+  assert.throws(() => validate(empty), /empty catalog/);
+});
+
 test('validate rejects drift loudly (named failures, never silent)', () => {
   const bad = structuredClone(good);
   bad.runtimes[0].capabilities = [42 as unknown as string];
