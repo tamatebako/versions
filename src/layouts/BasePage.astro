@@ -6,6 +6,12 @@ interface Props {
 }
 
 const { title, description, noindex = false } = Astro.props;
+
+// The served (directory) form — canonical must match what Pages actually
+// serves, or every canonical names its own 301.
+const path = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
+const canonicalUrl = new URL(path, Astro.site).href;
+const fallbackDescription = 'Catalog of tebako runtime, payload and toolchain releases.';
 ---
 
 <!doctype html>
@@ -14,9 +20,15 @@ const { title, description, noindex = false } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content={noindex ? 'noindex,follow' : 'index,follow'} />
-    {!noindex && <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site).href} />}
+    {!noindex && <link rel="canonical" href={canonicalUrl} />}
     <link rel="alternate" type="application/rss+xml" title="tebako versions" href="/versions/versions.xml" />
-    {description && <meta name="description" content={description} />}
+    <meta name="description" content={description ?? fallbackDescription} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="tebako versions" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description ?? fallbackDescription} />
+    {!noindex && <meta property="og:url" content={canonicalUrl} />}
+    <meta name="twitter:card" content="summary" />
     <title>{title}</title>
     <link rel="icon" type="image/svg+xml" href="/versions/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
