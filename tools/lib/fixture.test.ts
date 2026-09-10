@@ -28,6 +28,12 @@ test('fixture exercises the rendering branches', () => {
   assert.ok(rows.some((r) => r.flavor !== null), 'a flavor chip');
   assert.ok(rows.some((r) => r.exe?.sha256 === null), 'a sha-null row');
 
+  // spec 33 shapes: a 4-segment line with the universal image paired into
+  // every triplet, and a kind: runtime payload entry
+  assert.ok(rows.some((r) => r.engine === 'jruby' && r.lang_version.split('.').length === 4), 'a 4-segment langVer line');
+  assert.ok(rows.filter((r) => r.engine === 'jruby' && r.image !== null).every((r) => r.image!.size === rows.find((x) => x.engine === 'jruby')!.image!.size), 'universal image shared across triplets');
+  assert.ok(fixture.payloads.some((p) => p.kind === 'runtime'), 'a kind: runtime payload');
+
   const multi = fixture.payloads.find((p) => p.versions.length >= 2);
   assert.ok(multi, 'a multi-version payload');
 

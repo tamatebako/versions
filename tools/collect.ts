@@ -24,7 +24,7 @@ const TOKEN = process.env.GITHUB_TOKEN ?? '';
 
 interface SourcesConfig {
   factories: { repo: string; engine: string }[];
-  feedstocks: { org: string; registry_file: string };
+  feedstocks: { org: string; registry_file: string; repos?: string[] };
   product: { repo: string }[];
   triplets: string[];
   checksum_names: string[];
@@ -160,6 +160,24 @@ async function collectFactory(
       if (p.kind === 'exe') d.exe ??= asset;
       else d.image ??= asset;
     }
+  }
+
+  // spec 33 universal images: a `…-universal.tfs` asset serves every triplet
+  // of its line — fold it into the rows that have no exact-triplet image,
+  // and drop the pseudo-row afterwards.
+  const universalByReleaseLine = new Map<string, GhAsset>();
+  for (const d of rows.values()) {
+    if (d.triplet === 'universal' && d.image !== null) {
+      universalByReleaseLine.set(`${d.release.id}|${d.langVer}|${d.flavor ?? ''}`, d.image);
+    }
+  }
+  for (const d of rows.values()) {
+    if (d.image === null && d.triplet !== 'universal') {
+      d.image = universalByReleaseLine.get(`${d.release.id}|${d.langVer}|${d.flavor ?? ''}`) ?? null;
+    }
+  }
+  for (const [key, d] of [...rows.entries()]) {
+    if (d.triplet === 'universal') rows.delete(key);
   }
 
   // Latest release per line (line = engine + lang_version + flavor): the
@@ -317,12 +335,19 @@ async function collectFeedstocks(
       throw new CollectError(`collect: org ${cfg.feedstocks.org} exceeds 200 repos — widen pagination`);
     }
   }
+  // Runtime feedstocks in other orgs (spec 33): probe their in-repo
+  // registries explicitly — the org scan cannot see them.
+  const extra: GhRepo[] = [];
+  for (const repo of cfg.feedstocks.repos ?? []) {
+    const info = await githubJson<GhRepo & { full_name: string }>(`/repos/${repo}`);
+    extra.push({ name: info.full_name, default_branch: info.default_branch });
+  }
   const rows: PayloadRow[] = [];
   const catalogInfo = new Map<string, Map<string, { kind: string | null; summary: string | null }>>();
   let skipped = 0;
   let pointerRegistries = 0;
-  for (const repo of repos) {
-    const url = `${RAW_ROOT}/${cfg.feedstocks.org}/${repo.name}/${repo.default_branch}/${cfg.feedstocks.registry_file}`;
+  for (const repo of [...repos.map((r) => ({ name: `${cfg.feedstocks.org}/${r.name}`, default_branch: r.default_branch })), ...extra]) {
+    const url = `${RAW_ROOT}/${repo.name}/${repo.default_branch}/${cfg.feedstocks.registry_file}`;
     const res = await fetchWithRetry(url);
     // A repo without the registry file is skipped (counted, not an error).
     if (res.status === 404) {
@@ -345,7 +370,7 @@ async function collectFeedstocks(
       });
       continue;
     }
-    const mapped = mapRegistry(doc, `${cfg.feedstocks.org}/${repo.name}`, url);
+    const mapped = mapRegistry(doc, repo.name, url);
     if (mapped.length === 0) {
       // Catalog/pointer registries (e.g. the org index, unreleased feedstocks)
       // legitimately carry no versioned payloads[] — a valid observation, not
@@ -367,7 +392,7 @@ async function collectFeedstocks(
     }
   }
   mergeCatalogInfo(rows, catalogEntries);
-  return { rows, probed: repos.length, skipped, pointer: pointerRegistries };
+  return { rows, probed: repos.length + extra.length, skipped, pointer: pointerRegistries };
 }
 
 async function collectToolchain(
