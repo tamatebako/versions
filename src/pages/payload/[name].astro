@@ -136,6 +136,14 @@ const P_DESC = payload.summary ?? `Every version of the ${payload.name} payload 
   .block {
     margin-bottom: 0.9rem;
   }
+  /* The entrypoints field can carry ~40 pins (metanorma): let them wrap as a
+     chip field instead of stacking into a wall */
+  .block .pins {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.1rem;
+    align-items: center;
+  }
   .block-label {
     margin: 0 0 0.3rem;
     font-family: var(--tv-font-mono);
