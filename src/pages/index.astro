@@ -75,7 +75,10 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
       <header class="hero">
         <p class="eyebrow">catalog</p>
         <h1>tebako versions</h1>
-        <p class="lede">Every published runtime, payload and toolchain release — find your line, copy its pin.</p>
+        <p class="lede">
+          tebako packs applications into single-file executables — this catalog lists every published runtime,
+          payload and toolchain release. Find your line, copy its pin.
+        </p>
         <p class="ledger">
           {Object.entries(engineLineCounts).map(([engine, n]) => <span>{n} {engine} lines</span>)}
           <span>{payloads.length} payloads</span>
@@ -141,7 +144,7 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
                           snippets={[
                             { hint: 'reference', code: g.rows[0].reference },
                             {
-                              hint: 'config.yaml',
+                              hint: 'config.yaml → ~/.tebako/',
                               code: `runtimes:\n  ${g.engine}: { version: ${g.lang}, tebako: ${g.latestTebako} }`,
                             },
                           ]}

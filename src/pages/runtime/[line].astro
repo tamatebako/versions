@@ -61,7 +61,7 @@ const R_DESC = `Every release of the ${view.engine} ${view.lang}${view.flavor ? 
                 snippets={[
                   { hint: 'reference', code: g.rows[0].reference },
                   {
-                    hint: 'config.yaml',
+                    hint: 'config.yaml → ~/.tebako/',
                     code: `runtimes:\n  ${view.engine}: { version: ${view.lang}, tebako: ${g.tebakoLine} }`,
                   },
                 ]}
