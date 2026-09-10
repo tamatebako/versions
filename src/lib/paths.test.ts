@@ -25,16 +25,16 @@ const data: VersionsData = {
 };
 
 test('route URL spelling lives here', () => {
-  assert.strictEqual(linePath('ruby', '3.3.12', null), '/versions/runtime/ruby-3.3.12');
-  assert.strictEqual(linePath('python', '3.13.15', 'jit'), '/versions/runtime/python-3.13.15-jit');
-  assert.strictEqual(payloadPath('hello'), '/versions/payload/hello');
+  assert.strictEqual(linePath('ruby', '3.3.12', null), '/versions/runtime/ruby-3.3.12/');
+  assert.strictEqual(linePath('python', '3.13.15', 'jit'), '/versions/runtime/python-3.13.15-jit/');
+  assert.strictEqual(payloadPath('hello'), '/versions/payload/hello/');
 });
 
 test('sitemapPaths covers every addressable page exactly once', () => {
   assert.deepStrictEqual(sitemapPaths(data), [
-    '/versions',
-    '/versions/runtime/python-3.13.15-jit',
-    '/versions/runtime/ruby-3.3.12',
-    '/versions/payload/hello',
+    '/versions/',
+    '/versions/runtime/python-3.13.15-jit/',
+    '/versions/runtime/ruby-3.3.12/',
+    '/versions/payload/hello/',
   ]);
 });

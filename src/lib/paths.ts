@@ -5,14 +5,16 @@
 import { lineViews, lineSlug, payloadVersionsDesc, type LineView } from './groups.ts';
 import type { PayloadRow, PayloadVersion, VersionsData } from './types.ts';
 
-export const INDEX_PATH = '/versions';
+export const INDEX_PATH = '/versions/';
 export const RUNTIME_PATH = '/versions/runtime';
 export const PAYLOAD_PATH = '/versions/payload';
 
+// Trailing slashes: the served (directory) form — internal links must not
+// 301-hop, and canonical/sitemap/feed URLs must match what Pages serves.
 export const linePath = (engine: string, lang: string, flavor: string | null): string =>
-  `${RUNTIME_PATH}/${lineSlug(engine, lang, flavor)}`;
+  `${RUNTIME_PATH}/${lineSlug(engine, lang, flavor)}/`;
 
-export const payloadPath = (name: string): string => `${PAYLOAD_PATH}/${name}`;
+export const payloadPath = (name: string): string => `${PAYLOAD_PATH}/${name}/`;
 
 export interface RuntimeRoute {
   params: { line: string };
@@ -43,7 +45,7 @@ export async function payloadRoutes(): Promise<PayloadRoute[]> {
 export function sitemapPaths(v: VersionsData): string[] {
   return [
     INDEX_PATH,
-    ...lineViews(v).map((g) => `${RUNTIME_PATH}/${g.slug}`),
-    ...v.payloads.map((p) => `${PAYLOAD_PATH}/${p.name}`),
+    ...lineViews(v).map((g) => `${RUNTIME_PATH}/${g.slug}/`),
+    ...v.payloads.map((p) => `${PAYLOAD_PATH}/${p.name}/`),
   ];
 }
