@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { linePath, payloadPath, sitemapPaths } from './paths.ts';
+import { linePath, payloadPath, sitemapPaths, runtimeRequirementTarget } from './paths.ts';
 import type { VersionsData } from './types.ts';
 
 const data: VersionsData = {
@@ -37,4 +37,11 @@ test('sitemapPaths covers every addressable page exactly once', () => {
     '/versions/runtime/ruby-3.3.12/',
     '/versions/payload/hello/',
   ]);
+});
+
+test('runtime requirements resolve to the highest matching line', () => {
+  assert.deepStrictEqual(runtimeRequirementTarget('ruby ~> 3.3.0', data), { engine: 'ruby', lang: '3.3.12', flavor: null });
+  assert.strictEqual(runtimeRequirementTarget('python ~> 3.13.0', data)?.flavor, 'jit'); // only the jit line exists in this fixture
+  assert.strictEqual(runtimeRequirementTarget('ruby ~> 9.9.0', data), null);
+  assert.strictEqual(runtimeRequirementTarget('anything', data), null);
 });

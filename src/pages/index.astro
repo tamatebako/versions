@@ -3,7 +3,7 @@ import type { RuntimeRow } from '../lib/types';
 import { deriveCapabilityChips, CAPABILITY_RULE_OWNERS } from '../lib/capabilities';
 import { BOOTSTRAP_MAX_BYTES } from '../lib/gates';
 import { lineViews, payloadViews, payloadKindGroups, latestLinePerEngine } from '../lib/groups';
-import { linePath, payloadPath } from '../lib/paths';
+import { linePath, payloadPath, runtimeRequirementTarget } from '../lib/paths';
 import { mib, relAge, envName, badge } from '../lib/format';
 import { loadVersions } from '../lib/data';
 import PinSnippet from '../components/PinSnippet.astro';
@@ -253,7 +253,18 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
                     <td class="num" title={p.entrypoints.join(', ') || '—'}>
                       {p.entrypoints.length} {p.entrypoints.length > 0 && <span class="entry-first">· {p.entrypoints[0]}</span>}
                     </td>
-                    <td class="mono">{p.runtimeRequirement ?? '—'}</td>
+                    <td class="mono">
+                      {(() => {
+                        const target = p.runtimeRequirement ? runtimeRequirementTarget(p.runtimeRequirement, v) : null;
+                        return target ? (
+                          <a href={linePath(target.engine, target.lang, target.flavor)} title={`runtime line satisfying ${p.runtimeRequirement}`}>
+                            {p.runtimeRequirement}
+                          </a>
+                        ) : (
+                          p.runtimeRequirement ?? '—'
+                        );
+                      })()}
+                    </td>
                     <td class="num">
                       {p.platformCount}
                     </td>

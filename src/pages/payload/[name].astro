@@ -1,6 +1,7 @@
 ---
 import { loadVersions } from '../../lib/data';
 import { envName, badge } from '../../lib/format';
+import { payloadPath, linePath, runtimeRequirementTarget } from '../../lib/paths';
 import PinSnippet from '../../components/PinSnippet.astro';
 import '../../styles/tokens.css';
 import '../../styles/base.css';
@@ -13,6 +14,8 @@ export async function getStaticPaths() {
 const { payload, versions } = Astro.props;
 
 const payloadBadge = badge('tebako payload', `${payload.name} ${versions[0]?.version ?? ''}`);
+const allPayloads = loadVersions().payloads;
+const reqTarget = (req: string | null) => (req ? runtimeRequirementTarget(req, loadVersions()) : null);
 const P_TITLE = `${payload.name} — tebako versions`;
 const P_DESC = payload.summary ?? `Every version of the ${payload.name} payload — entrypoints, platforms, sha256s.`;
 ---
@@ -43,7 +46,18 @@ const P_DESC = payload.summary ?? `Every version of the ${payload.name} payload 
             <div class="group-head">
               <h2>{ver.version}</h2>
               {i === 0 && <span class="chip chip-flowed">latest</span>}
-              <span class="group-meta mono">{ver.runtime_requirement ?? 'runtime: —'}</span>
+              <span class="group-meta mono">
+                {(() => {
+                  const t = reqTarget(ver.runtime_requirement);
+                  return t ? (
+                    <a href={linePath(t.engine, t.lang, t.flavor)} title={`runtime line satisfying ${ver.runtime_requirement}`}>
+                      {ver.runtime_requirement}
+                    </a>
+                  ) : (
+                    ver.runtime_requirement ?? 'runtime: —'
+                  );
+                })()}
+              </span>
             </div>
 
             {ver.entrypoints.length > 0 && (
@@ -96,6 +110,12 @@ const P_DESC = payload.summary ?? `Every version of the ${payload.name} payload 
           </section>
         ))
       }
+      <p class="footer-note">
+        Other payloads: {' '}
+        {allPayloads
+          .filter((o) => o.name !== payload.name)
+          .map((o) => <a href={payloadPath(o.name)}>{o.name}</a>)}
+      </p>
     </main>
   </BasePage>
 
@@ -153,6 +173,15 @@ const P_DESC = payload.summary ?? `Every version of the ${payload.name} payload 
     color: var(--tv-text-3);
   }
 
+  .footer-note {
+    margin-top: 3rem;
+    font-family: var(--tv-font-mono);
+    font-size: 0.8125rem;
+    color: var(--tv-text-3);
+    display: flex;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+  }
   .artifact {
     white-space: nowrap;
     color: var(--tv-text-2);

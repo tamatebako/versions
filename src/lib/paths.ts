@@ -16,6 +16,23 @@ export const linePath = (engine: string, lang: string, flavor: string | null): s
 
 export const payloadPath = (name: string): string => `${PAYLOAD_PATH}/${name}/`;
 
+// A payload's runtime_requirement ("ruby ~> 3.3.0") resolves to the catalog's
+// highest line matching the constraint's major.minor — the two planes connect.
+export function runtimeRequirementTarget(
+  req: string,
+  v: VersionsData,
+): { engine: string; lang: string; flavor: string | null } | null {
+  const m = /^([a-z]+)\s*~>\s*(\d+\.\d+)/i.exec(req);
+  if (m === null) return null;
+  const engine = m[1].toLowerCase();
+  const prefix = `${m[2]}.`;
+  const candidates = lineViews(v).filter((lv) => lv.engine === engine && lv.lang.startsWith(prefix));
+  // Prefer the unflavored line when plain and flavored builds tie — the
+  // default experience satisfies the requirement as well as a flavor does.
+  const best = candidates.find((lv) => lv.flavor === null) ?? candidates[0];
+  return best ? { engine: best.engine, lang: best.lang, flavor: best.flavor } : null;
+}
+
 export interface RuntimeRoute {
   params: { line: string };
   props: { view: LineView };
