@@ -31,11 +31,16 @@ const R_DESC = `Every release of the ${view.engine} ${view.lang}${view.flavor ? 
           tebako line <a href={view.groups[0].release.url}>{view.latestTebako}</a>
         </p>
         <p class="stamp">Built {v.generated_at.slice(0, 10)} {v.generated_at.slice(11, 16)} UTC · <a href="https://www.tebako.org/">tebako.org</a></p>
+        <label class="filter">
+          <span class="filter-label">filter</span>
+          <input id="filter" type="search" placeholder="musl, 0.16.21, yjit…" autocomplete="off" />
+        </label>
+        <noscript><style>.filter { display: none; }</style></noscript>
       </header>
 
       {
         view.groups.map((g) => (
-          <section class:list={['section', { current: g.isLatest, older: !g.isLatest }]}>
+          <section class:list={['section', { current: g.isLatest, older: !g.isLatest }]} data-section>
             <div class="group-head">
               <h2>
                 tebako <a href={g.release.url}>{g.tebakoLine}</a>
@@ -70,7 +75,9 @@ const R_DESC = `Every release of the ${view.engine} ${view.lang}${view.flavor ? 
                   {g.rows.map((r) => {
                     const chips = deriveCapabilityChips(r);
                     return (
-                      <tr>
+                      <tr
+                        data-filter={[r.triplet, g.tebakoLine, ...(r.capabilities ?? chips.map((c) => c.label))].join(' ')}
+                      >
                         <td>
                           <span class="chip chip-platform">{r.triplet}</span>
                         </td>
@@ -153,3 +160,19 @@ const R_DESC = `Every release of the ${view.engine} ${view.lang}${view.flavor ? 
     flex-wrap: wrap;
   }
 </style>
+
+<script>
+  const input = document.getElementById('filter') as HTMLInputElement | null;
+  if (input) {
+    input.addEventListener('input', () => {
+      const q = input.value.trim().toLowerCase();
+      for (const el of document.querySelectorAll<HTMLElement>('[data-filter]')) {
+        el.toggleAttribute('hidden', q.length > 0 && !el.getAttribute('data-filter')!.toLowerCase().includes(q));
+      }
+      for (const section of document.querySelectorAll<HTMLElement>('[data-section]')) {
+        const any = [...section.querySelectorAll<HTMLElement>('[data-filter]')].some((t) => !t.hasAttribute('hidden'));
+        section.toggleAttribute('hidden', q.length > 0 && !any);
+      }
+    });
+  }
+</script>
