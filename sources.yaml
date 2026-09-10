@@ -1,14 +1,10 @@
 factories:
-  # Every official runtime factory follows the tebako-runtime-<engine> naming
-  # in the tamatebako org — discovery, not enumeration: a new runtime repo is
-  # adopted by the next build with no config change.
+  # Official runtime factories = every tebako-runtime-<engine> repo in the
+  # org (discovered). Triplets are discovered from the factories' release
+  # manifests. No ecosystem state lives in this file — only subjects.
   org: tamatebako
   prefix: tebako-runtime-
 feedstocks:
   org: tebako-packages
-  registry_file: tpkg-registry.yaml
 product:
   - { repo: tamatebako/tebako }
-triplets: [macos-arm64, macos-x86_64, linux-gnu-x86_64, linux-gnu-arm64,
-           linux-musl-x86_64, linux-musl-arm64, windows-ucrt64]
-checksum_names: [SHA256SUMS.txt, SHA256SUMS]

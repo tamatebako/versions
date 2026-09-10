@@ -61,15 +61,18 @@ tamatebako/tebako releases (product)     ┘
 
 The three data planes:
 
-1. **Factory releases** — `tamatebako/tebako-runtime-ruby`,
-   `tamatebako/tebako-runtime-python` (defined in `sources.yaml`). Asset
-   name grammar: `tebako-runtime-<tebakoVer>-<langVer>-<triplet>` + suffix
-   (none = interpreter exe, `.exe` on windows, `.tfs` = env image,
-   `.manifest.json`). `langVer` may carry a flavor suffix (`3.13.15-jit`) —
-   the parser must tolerate `-[a-z0-9]+` suffixes and expose them as the
-   flavor. Parse triplets by matching the KNOWN LIST in `sources.yaml`
-   against the name tail — never a greedy regex. Checksum asset:
-   `SHA256SUMS.txt` (verified in the ruby factory) or `SHA256SUMS`.
+1. **Factory releases** — every `tebako-runtime-<engine>` repo in the
+   `tamatebako` org, DISCOVERED (a new runtime repo is adopted by the next
+   build; no config change). Asset grammar:
+   `tebako-runtime-<tebakoVer>-<langVer>[-<flavor>]-<triplet>` + suffix
+   (none = exe, `.exe`, `.tfs` env image, `.manifest.json` shard,
+   `…-universal.tfs` = spec 33 universal image paired into every triplet).
+   langVers carry as many dotted segments as the language spells
+   (`10.1.1.0`). The triplet vocabulary is ELABORATED from the release
+   asset names themselves (`deriveTriplets` — the monolithic manifest.json
+   is legacy, never read); unparsable runtime names are counted and
+   surfaced, never silently dropped. sources.yaml holds no ecosystem
+   state — only subject pointers (orgs + the product repo).
 2. **Feedstock registries** — `tpkg-registry.yaml` at the root of every
    repo in the `tebako-packages` org (L3 mirror). Read defensively: unknown
    keys ignored, missing ones → `null`. Repos without the file are skipped

@@ -84,3 +84,37 @@ export function parseBootstrapAsset(
   if (!/^\d+(\.\d+)+$/.test(version)) return null;
   return { version, triplet };
 }
+
+// The triplet vocabulary, elaborated from the releases themselves — the
+// factories' asset names are the SSOT (the monolithic manifest.json is
+// legacy; never read it). The naming scheme's atoms: after the two
+// dotted-numeric versions (and an optional single-segment flavor), the
+// triplet begins at the OS-family segment.
+const OS_FAMILIES = ['macos', 'linux', 'windows'];
+
+export function deriveTriplets(names: string[]): string[] {
+  const set = new Set<string>();
+  for (const name of names) {
+    if (!name.startsWith('tebako-runtime-')) continue;
+    let stem = name.slice('tebako-runtime-'.length);
+    for (const suf of ['.manifest.json', '.tfs.sha256', '.sha256', '.tfs', '.exe', '.dll']) {
+      if (stem.endsWith(suf)) {
+        stem = stem.slice(0, -suf.length);
+        break;
+      }
+    }
+    const m = /^(\d+(?:\.\d+)+)-(\d+(?:\.\d+)+)-(.+)$/.exec(stem);
+    if (m === null) continue;
+    const segs = m[3].split('-');
+    let start = -1;
+    for (let i = segs.length - 1; i >= 0; i--) {
+      if (segs[i] === 'universal' || OS_FAMILIES.includes(segs[i])) {
+        start = i;
+        break;
+      }
+    }
+    if (start < 0) continue;
+    set.add(segs.slice(start).join('-'));
+  }
+  return [...set].sort();
+}

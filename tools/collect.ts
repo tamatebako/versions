@@ -6,7 +6,7 @@
 // failed deploy).
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
-import { parseRuntimeAsset, parseBootstrapAsset } from './lib/grammar.ts';
+import { parseRuntimeAsset, parseBootstrapAsset, deriveTriplets } from './lib/grammar.ts';
 import { parseShaSums, mapRegistry, harvestCatalogInfo, mergeCatalogInfo } from './lib/registry.ts';
 import { CollectError, need, validate } from './lib/validate.ts';
 import type {
@@ -20,6 +20,10 @@ import type {
 const API_ROOT = 'https://api.github.com';
 const RAW_ROOT = 'https://raw.githubusercontent.com';
 const BACKOFF_S = [5, 15, 45];
+// Filename conventions of the ecosystem's release grammar — code-owned like
+// the asset grammar itself; sources.yaml carries only subject pointers.
+const REGISTRY_FILE = 'tpkg-registry.yaml';
+const CHECKSUM_NAMES = ['SHA256SUMS.txt', 'SHA256SUMS'];
 const TOKEN = process.env.GITHUB_TOKEN ?? '';
 
 interface FactoryRef {
@@ -29,10 +33,8 @@ interface FactoryRef {
 
 interface SourcesConfig {
   factories: { org: string; prefix: string };
-  feedstocks: { org: string; registry_file: string; repos?: string[] };
+  feedstocks: { org: string };
   product: { repo: string }[];
-  triplets: string[];
-  checksum_names: string[];
 }
 
 function loadSources(): SourcesConfig {
@@ -40,10 +42,7 @@ function loadSources(): SourcesConfig {
   need(typeof cfg?.factories?.org === 'string', 'sources.yaml: factories.org missing');
   need(typeof cfg?.factories?.prefix === 'string' && cfg.factories.prefix.length > 0, 'sources.yaml: factories.prefix missing');
   need(typeof cfg?.feedstocks?.org === 'string', 'sources.yaml: feedstocks.org missing');
-  need(typeof cfg?.feedstocks?.registry_file === 'string', 'sources.yaml: feedstocks.registry_file missing');
   need(Array.isArray(cfg?.product) && cfg.product.length > 0, 'sources.yaml: product missing');
-  need(Array.isArray(cfg?.triplets) && cfg.triplets.length > 0, 'sources.yaml: triplets missing');
-  need(Array.isArray(cfg?.checksum_names) && cfg.checksum_names.length > 0, 'sources.yaml: checksum_names missing');
   return cfg;
 }
 
@@ -131,12 +130,7 @@ interface GhRelease {
 // from the KNOWN LIST against the name tail — never a greedy regex — so
 // hyphenated triplets (linux-gnu-x86_64, windows-ucrt64) and langVer flavor
 // suffixes (3.13.15-jit) stay unambiguous.
-async function collectFactory(
-  repo: string,
-  engine: string,
-  cfg: SourcesConfig,
-  statuses: SourceStatus[],
-): Promise<RuntimeRow[]> {
+async function fetchFactoryReleases(repo: string, statuses: SourceStatus[]): Promise<GhRelease[]> {
   const releases = (
     await githubJson<GhRelease[]>(`/repos/${repo}/releases?per_page=20`)
   ).filter((r) => !r.draft);
@@ -146,6 +140,23 @@ async function collectFactory(
     ok: true,
     note: `${releases.length} non-draft releases`,
   });
+  return releases;
+}
+
+// SSOT for the triplet vocabulary: elaborated from the factories' own
+// release asset names (the monolithic manifest.json is legacy — never read).
+async function discoverTriplets(releaseSets: GhRelease[][]): Promise<string[]> {
+  const names = releaseSets.flatMap((releases) => releases.flatMap((rel) => rel.assets.map((a) => a.name)));
+  return deriveTriplets(names);
+}
+
+async function collectFactory(
+  repo: string,
+  engine: string,
+  releases: GhRelease[],
+  triplets: string[],
+  statuses: SourceStatus[],
+): Promise<RuntimeRow[]> {
 
   interface RowDraft {
     release: GhRelease;
@@ -157,11 +168,18 @@ async function collectFactory(
     image: GhAsset | null;
   }
   const rows = new Map<string, RowDraft>();
+  let unparsed = 0;
   for (const rel of releases) {
     const tagVer = rel.tag_name.replace(/^v/, '');
     for (const asset of rel.assets) {
-      const p = parseRuntimeAsset(asset.name, cfg.triplets);
-      if (p === null || p.kind === 'manifest' || p.kind === 'sidecar' || p.kind === 'dll') continue;
+      const p = parseRuntimeAsset(asset.name, triplets);
+      if (p === null) {
+        // A runtime-prefixed name that fails the grammar is a vocabulary
+        // change upstream — surfaced, never silently dropped.
+        if (asset.name.startsWith('tebako-runtime-') && !asset.name.endsWith('.dll')) unparsed++;
+        continue;
+      }
+      if (p.kind === 'manifest' || p.kind === 'sidecar' || p.kind === 'dll') continue;
       if (p.tebakoVer !== tagVer) continue;
       const key = `${rel.id}|${p.langVer}|${p.flavor ?? ''}|${p.triplet}`;
       let d = rows.get(key);
@@ -226,15 +244,15 @@ async function collectFactory(
   }
   const shaByRelease = new Map<number, Map<string, string>>();
   for (const rel of checksumReleases.values()) {
-    const asset = cfg.checksum_names
-      .map((n) => rel.assets.find((a) => a.name === n))
-      .find((a) => a !== undefined);
+    const asset = CHECKSUM_NAMES.map((n) => rel.assets.find((a) => a.name === n)).find(
+      (a) => a !== undefined,
+    );
     if (!asset) {
       statuses.push({
         url: rel.html_url,
         kind: 'checksum',
         ok: false,
-        note: `no checksum asset (${cfg.checksum_names.join(' / ')}) in ${rel.tag_name}; sha256 stays null`,
+        note: `no checksum asset (${CHECKSUM_NAMES.join(' / ')}) in ${rel.tag_name}; sha256 stays null`,
       });
       continue;
     }
@@ -289,6 +307,14 @@ async function collectFactory(
   }
 
   const out: RuntimeRow[] = [];
+  if (unparsed > 0) {
+    statuses.push({
+      url: `${API_ROOT}/repos/${repo}/releases?per_page=20`,
+      kind: 'factory-release',
+      ok: true,
+      note: `${unparsed} tebako-runtime-* asset names failed the grammar — naming drift?`,
+    });
+  }
   if (capMisses > 0) {
     statuses.push({
       url: `${API_ROOT}/repos/${repo}/releases?per_page=20`,
@@ -369,7 +395,7 @@ async function collectFeedstocks(
   let skipped = 0;
   let pointerRegistries = 0;
   for (const repo of [...repos.map((r) => ({ name: `${cfg.feedstocks.org}/${r.name}`, default_branch: r.default_branch })), ...extra]) {
-    const url = `${RAW_ROOT}/${repo.name}/${repo.default_branch}/${cfg.feedstocks.registry_file}`;
+    const url = `${RAW_ROOT}/${repo.name}/${repo.default_branch}/${REGISTRY_FILE}`;
     const res = await fetchWithRetry(url);
     // A repo without the registry file is skipped (counted, not an error).
     if (res.status === 404) {
@@ -419,7 +445,7 @@ async function collectFeedstocks(
 
 async function collectToolchain(
   repo: string,
-  cfg: SourcesConfig,
+  triplets: string[],
   statuses: SourceStatus[],
 ): Promise<ToolchainRow[]> {
   const releases = (
@@ -435,7 +461,7 @@ async function collectToolchain(
   for (const rel of releases) {
     const bootstrap: ToolchainRow['bootstrap'] = [];
     for (const asset of rel.assets) {
-      const parsed = parseBootstrapAsset(asset.name, cfg.triplets);
+      const parsed = parseBootstrapAsset(asset.name, triplets);
       if (parsed) bootstrap.push({ triplet: parsed.triplet, bytes: asset.size });
     }
     bootstrap.sort((a, b) => a.triplet.localeCompare(b.triplet));
@@ -484,16 +510,23 @@ async function main(): Promise<void> {
   const factories = await discoverFactories(cfg);
   need(factories.length > 0, 'no tebako-runtime-* factories discovered in the org');
 
-  const runtimes: RuntimeRow[] = [];
+  const releaseSets: GhRelease[][] = [];
   for (const f of factories) {
-    runtimes.push(...(await collectFactory(f.repo, f.engine, cfg, statuses)));
+    releaseSets.push(await fetchFactoryReleases(f.repo, statuses));
+  }
+  const triplets = await discoverTriplets(releaseSets);
+  need(triplets.length > 0, 'no platforms discovered from factory release manifests');
+
+  const runtimes: RuntimeRow[] = [];
+  for (const [i, f] of factories.entries()) {
+    runtimes.push(...(await collectFactory(f.repo, f.engine, releaseSets[i]!, triplets, statuses)));
   }
 
   const feed = await collectFeedstocks(cfg, factories, statuses);
 
   const toolchain: ToolchainRow[] = [];
   for (const p of cfg.product) {
-    toolchain.push(...(await collectToolchain(p.repo, cfg, statuses)));
+    toolchain.push(...(await collectToolchain(p.repo, triplets, statuses)));
   }
 
   const byEngine = new Map<string, number>();
@@ -518,7 +551,7 @@ async function main(): Promise<void> {
     `collect: capabilities: ${flowed} flowed from factory manifests, ${data.runtimes.length - flowed} derived (fallback)`,
   );
   console.log(
-    `collect: feedstocks: ${feed.probed} probed, ${feed.skipped} without ${cfg.feedstocks.registry_file}, ${feed.pointer} pointer registries`,
+    `collect: feedstocks: ${feed.probed} probed, ${feed.skipped} without ${REGISTRY_FILE}, ${feed.pointer} pointer registries`,
   );
 }
 
