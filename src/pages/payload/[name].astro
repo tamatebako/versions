@@ -66,11 +66,11 @@ const P_DESC = payload.summary ?? `Every version of the ${payload.name} payload 
                 <PinSnippet
                   snippets={[
                     ...ver.entrypoints.map((tool) => ({
-                      hint: `env ${tool}`,
+                      hint: `env var`,
                       code: `${envName(tool)}=${ver.version}`,
                     })),
                     ...(ver.entrypoints[0]
-                      ? [{ hint: 'shim verb', code: `tebako-shim use ${ver.entrypoints[0]} ${ver.version}` }]
+                      ? [{ hint: 'shim command', code: `tebako-shim use ${ver.entrypoints[0]} ${ver.version}` }]
                       : []),
                   ]}
                 />
