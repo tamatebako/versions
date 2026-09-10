@@ -111,11 +111,21 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
               </tr>
             </thead>
             {
-              lineGroups.map((g) => (
-                <tbody
-                  class="line"
-                  data-filter={[g.engine, g.lang, g.flavor ?? '', g.latestTebako, ...g.rows.map((r) => r.triplet)].join(' ')}
-                >
+              lineGroups.map((g, i) => (
+                <>
+                  {(i === 0 || lineGroups[i - 1].engine !== g.engine) && (
+                    <tbody class="engine-head">
+                      <tr>
+                        <th colspan="6" scope="colgroup">
+                          {g.engine} · {engineLineCounts[g.engine]} lines
+                        </th>
+                      </tr>
+                    </tbody>
+                  )}
+                  <tbody
+                    class="line"
+                    data-filter={[g.engine, g.lang, g.flavor ?? '', g.latestTebako, ...g.rows.map((r) => r.triplet)].join(' ')}
+                  >
                   <tr class="line-head">
                     <th colspan="6" scope="rowgroup">
                       <div class="line-id">
@@ -179,7 +189,8 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
                       </tr>
                     );
                   })}
-                </tbody>
+                  </tbody>
+                </>
               ))
             }
           </table>
@@ -481,6 +492,17 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
     gap: 0.3rem;
   }
 
+  .engine-head th {
+    background: var(--tv-bg);
+    padding: 1.1rem 0.9rem 0.45rem;
+    font-family: var(--tv-font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--tv-text-3);
+    border-bottom: 1px solid var(--tv-divider);
+  }
   .kind-head th {
     background: var(--tv-bg-warm);
     border-bottom: 1px solid var(--tv-divider-strong);
