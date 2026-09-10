@@ -38,7 +38,7 @@
   color: var(--tv-accent);
 }
 .eyebrow a {
-  color: var(--tv-accent);
+  color: var(--tv-accent-text);
 }
 
 .lede {
@@ -170,7 +170,7 @@ td.num {
 }
 .chip-flavor {
   border-color: var(--tv-accent);
-  color: var(--tv-accent);
+  color: var(--tv-accent-text);
 }
 .chip-pre {
   border-color: var(--tv-chip-bad-border);
@@ -185,12 +185,12 @@ a.chip-cap {
 }
 a.chip-cap:hover {
   border-color: var(--tv-accent);
-  color: var(--tv-accent);
+  color: var(--tv-accent-text);
 }
 .chip-flowed {
   border-style: solid;
   border-color: var(--tv-accent);
-  color: var(--tv-accent);
+  color: var(--tv-accent-text);
 }
 .chip-gate.chip-ok {
   background: var(--tv-chip-ok-bg);
