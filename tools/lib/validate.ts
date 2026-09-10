@@ -30,6 +30,10 @@ export function validate(data: VersionsData): void {
     need(isStr(s.url) && isStr(s.kind) && typeof s.ok === 'boolean', 'sources[] entry');
   }
   need(Array.isArray(data.runtimes), 'runtimes[]');
+  // An empty runtimes plane is never legitimate — it means every factory
+  // source yielded nothing. Refuse loudly rather than publish an empty
+  // catalog (the previous deploy stays live).
+  need(data.runtimes.length > 0, 'runtimes[] is empty — refusing to publish an empty catalog');
   for (const r of data.runtimes) {
     need(
       isStr(r.engine) && isStr(r.lang_version) && (r.flavor === null || isStr(r.flavor)),
