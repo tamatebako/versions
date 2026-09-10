@@ -9,11 +9,11 @@ published artifacts, styled after mise-versions.jdx.dev, hosted at
 https://www.tebako.org/versions via GitHub Pages. The GitHub remote must be
 `tamatebako/versions` (repo name = URL path).
 
-Status as of 2026-09-08: **greenfield**. The only content is the execution
-contract in `TODO.impl/` (plans 00–05). `TODO.impl/00-charter.md` is the
-owner-locked decision log — do not relitigate it. Execute plans in number
-order, one PR per plan. Dependency note: plan 04 is parallel to 01–03 and
-touches the two factory repos; plan 05 needs 03.
+Plans 01–05 are EXECUTED, merged, and live (see git log). `TODO.impl/00-charter.md`
+remains the owner-locked decision log. Post-contract owner amendments, in order:
+detail pages per line/payload with kind groups (supersedes plan 05 §5's ~50-row
+deferral); spec 33 runtime feedstocks adopted via discovery; config is SSOT-clean
+(zero ecosystem state).
 
 This repo lives inside the tebako ecosystem — read `../CLAUDE.md` (the
 ecosystem map) for the five laws and repo table. The relevant ones here:
@@ -89,12 +89,13 @@ by the collector with hand-rolled asserts) · capability derivation
 hand into `src/styles/tokens.css` (visual parity with tebako.org — not a
 contract value).
 
-Capability chips are derived at render time (ruby: `yjit` when
-lang_version >= 3.2 AND triplet != windows-ucrt64; python: `jit` when
-flavor == 'jit') **as a fallback only** — plan 04 makes factories publish a
-`capabilities:` manifest key that WINS when present (solid chip vs dotted
-"derived" chip). The derive code must keep a comment saying it is the
-fallback, not the authority.
+Capability chips are derived at render time **as a fallback only** (ruby
+`yjit`: non-windows AND ruby >= 3.2 OR the 3.1 line on x86_64 — mirroring
+the factory's `Capabilities` truth table; python `jit`: the flavor) —
+plan 04's factory `capabilities:` manifest key WINS when present (solid
+vs dotted chip; collector fetches shards for latest-in-line rows). The
+derive code keeps its fallback comment. Other engines (jruby,
+truffleruby, openjdk) derive nothing until their manifests carry keys.
 
 ## Laws for every change in this repo
 
@@ -117,9 +118,11 @@ fallback, not the authority.
   analytics. Shields.io static badges only.
 - **Bounded, authenticated GitHub API use**: always send
   `Authorization: Bearer $GITHUB_TOKEN` when set (unauthenticated is
-  60 req/h); releases list + one checksum fetch per LATEST release per
-  line + one raw file per feedstock — NO per-asset manifest fan-out until
-  plan 04.
+  60 req/h). Requests: org rosters (factory + feedstock discovery), one
+  releases list per factory, one checksum fetch per latest release per
+  line, one registry raw file per feedstock, and the plan-04 per-shard
+  manifest fetch for latest-in-line rows (small CDN downloads,
+  concurrency 6).
 - **Page budget**: total page weight (HTML+CSS+JS) < 150 KB (plan 02
   acceptance).
 
