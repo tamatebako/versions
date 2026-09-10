@@ -104,7 +104,7 @@ const R_DESC = `Every release of the ${view.engine} ${view.lang}${view.flavor ? 
                         <td class="mono num">
                           {r.exe ? mib(r.exe.size) : '—'} / {r.image ? mib(r.image.size) : '—'}
                         </td>
-                        <td class="num">{r.exe ? r.exe.downloads : '—'}</td>
+                        <td class="num">{r.exe ? r.exe.downloads.toLocaleString('en-US') : '—'}</td>
                         <td class="mono sha" title={r.exe?.sha256 ?? 'no checksum fetched for older releases'}>
                           {r.exe?.sha256 ? r.exe.sha256.slice(0, 12) : '—'}
                         </td>
