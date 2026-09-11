@@ -170,7 +170,6 @@ async function collectFactory(
   const rows = new Map<string, RowDraft>();
   let unparsed = 0;
   for (const rel of releases) {
-    const tagVer = rel.tag_name.replace(/^v/, '');
     for (const asset of rel.assets) {
       const p = parseRuntimeAsset(asset.name, triplets);
       if (p === null) {
@@ -180,7 +179,9 @@ async function collectFactory(
         continue;
       }
       if (p.kind === 'manifest' || p.kind === 'sidecar' || p.kind === 'dll') continue;
-      if (p.tebakoVer !== tagVer) continue;
+      // The artifact name is the SSOT for the tebako line; the release tag
+      // is a pointer (feedstock re-rolls tag independently — v2.5.1 carrying
+      // 2.5.0 artifacts).
       const key = `${rel.id}|${p.langVer}|${p.flavor ?? ''}|${p.triplet}`;
       let d = rows.get(key);
       if (!d) {
@@ -217,6 +218,24 @@ async function collectFactory(
   for (const [key, d] of [...rows.entries()]) {
     if (d.triplet === 'universal') rows.delete(key);
   }
+
+  // Feedstock re-rolls re-release identical artifacts under a new tag
+  // (signed re-releases): collapse duplicate (line, triplet, tebako) rows
+  // keeping the NEWEST release.
+  const deduped = new Map<string, RowDraft>();
+  for (const d of rows.values()) {
+    const k = `${d.langVer}|${d.flavor ?? ''}|${d.triplet}|${d.tebakoVer}`;
+    const cur = deduped.get(k);
+    if (
+      !cur ||
+      d.release.published_at > cur.release.published_at ||
+      (d.release.published_at === cur.release.published_at && d.release.id > cur.release.id)
+    ) {
+      deduped.set(k, d);
+    }
+  }
+  rows.clear();
+  for (const [k, d] of deduped) rows.set(k, d);
 
   // Latest release per line (line = engine + lang_version + flavor): the
   // newest published release carrying that line.

@@ -21,6 +21,11 @@ export function parseRuntimeAsset(name: string, triplets: string[]): ParsedAsset
   const PREFIX = 'tebako-runtime-';
   if (!name.startsWith(PREFIX)) return null;
   let stem = name.slice(PREFIX.length);
+  // Signature sidecars (.asc) wrap ANY artifact (X.asc, X.tfs.asc,
+  // X.exe.asc): strip the wrapper first, classify the remainder for the
+  // stem, then force the sidecar kind.
+  const signed = stem.endsWith('.asc');
+  if (signed) stem = stem.slice(0, -'.asc'.length);
   let kind: AssetKind;
   if (stem.endsWith('.manifest.json')) {
     kind = 'manifest';
@@ -65,7 +70,7 @@ export function parseRuntimeAsset(name: string, triplets: string[]): ParsedAsset
   // graalvm 25.0.4.1, ruby 3.3.12 — all dotted numerics.
   const m = /^(\d+(?:\.\d+)+)(?:-([a-z0-9]+))?$/.exec(head.slice(dash + 1));
   if (m === null) return null;
-  return { tebakoVer, langVer: m[1], flavor: m[2] ?? null, triplet, kind };
+  return { tebakoVer, langVer: m[1], flavor: m[2] ?? null, triplet, kind: signed ? 'sidecar' : kind };
 }
 
 // tebako-bootstrap-<ver>-<triplet>[.exe] — the toolchain's asset grammar

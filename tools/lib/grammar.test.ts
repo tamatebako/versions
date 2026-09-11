@@ -37,6 +37,10 @@ test('suffixes: exe, tfs image, manifest, sha256 sidecar, dll', () => {
   assert.strictEqual(parseRuntimeAsset(`${stem}.manifest.json`, TRIPLETS)?.kind, 'manifest');
   assert.strictEqual(parseRuntimeAsset(`${stem}.sha256`, TRIPLETS)?.kind, 'sidecar');
   assert.strictEqual(parseRuntimeAsset(`${stem}.tfs.sha256`, TRIPLETS)?.kind, 'sidecar');
+  assert.strictEqual(parseRuntimeAsset(`${stem}.asc`, TRIPLETS)?.kind, 'sidecar');
+  assert.strictEqual(parseRuntimeAsset(`${stem}.tfs.asc`, TRIPLETS)?.kind, 'sidecar');
+  assert.strictEqual(parseRuntimeAsset(`${stem}.exe.asc`, TRIPLETS)?.kind, 'sidecar');
+  assert.strictEqual(parseRuntimeAsset(`${stem}.asc`, TRIPLETS)?.kind, 'sidecar');
   assert.strictEqual(parseRuntimeAsset(`${stem}.dll`, TRIPLETS)?.kind, 'dll');
 });
 
