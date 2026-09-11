@@ -29,3 +29,15 @@ jobs:
           name: site-dist
           path: dist
           retention-days: 7
+
+      - name: Refresh www.tebako.org/versions
+        # Closes the refresh loop: the catalog goes live within minutes of
+        # the build instead of waiting for tebako.org's nightly cron (the
+        # cron stays as the backstop). Needs actions:write on
+        # tamatebako/tebako.org on the org PAT; a failed ping never fails
+        # the build.
+        if: success()
+        continue-on-error: true
+        run: gh workflow run build_deploy --repo tamatebako/tebako.org --ref main
+        env:
+          GH_TOKEN: ${{ secrets.TEBAKO_CI_PAT_TOKEN || secrets.GITHUB_TOKEN }}
