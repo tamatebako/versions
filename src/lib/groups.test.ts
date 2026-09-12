@@ -14,7 +14,7 @@ const row = (over: Partial<VersionsData['runtimes'][number]>): VersionsData['run
   capabilities: null,
   exe: null,
   image: null,
-  release: { tag: 'v0.16.22', url: 'https://example.com/v0.16.22', published_at: '2026-09-05T22:21:52Z', prerelease: false },
+  release: { tag: 'v0.16.22', url: 'https://example.com/v0.16.22', published_at: '2026-09-05T22:21:52Z', prerelease: false, signed: false },
   ...over,
 });
 

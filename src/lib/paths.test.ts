@@ -10,12 +10,12 @@ const data: VersionsData = {
     {
       engine: 'ruby', lang_version: '3.3.12', flavor: null, tebako_line: '0.16.22', triplet: 'macos-arm64',
       reference: 'r', latest_in_line: true, capabilities: null, exe: null, image: null,
-      release: { tag: 'v', url: 'u', published_at: '2026-09-05T22:21:52Z', prerelease: false },
+      release: { tag: 'v', url: 'u', published_at: '2026-09-05T22:21:52Z', prerelease: false, signed: false },
     },
     {
       engine: 'python', lang_version: '3.13.15', flavor: 'jit', tebako_line: '0.1.2', triplet: 'macos-arm64',
       reference: 'p', latest_in_line: true, capabilities: null, exe: null, image: null,
-      release: { tag: 'v', url: 'u', published_at: '2026-09-08T12:47:40Z', prerelease: false },
+      release: { tag: 'v', url: 'u', published_at: '2026-09-08T12:47:40Z', prerelease: false, signed: false },
     },
   ],
   payloads: [

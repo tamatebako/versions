@@ -53,7 +53,7 @@ export function validate(data: VersionsData): void {
       isStr(r.release.tag) &&
         isStr(r.release.url) &&
         isStr(r.release.published_at) &&
-        typeof r.release.prerelease === 'boolean',
+        typeof r.release.prerelease === 'boolean' && typeof r.release.signed === 'boolean',
       `runtime row ${r.reference}: release`,
     );
   }
@@ -89,7 +89,7 @@ export function validate(data: VersionsData): void {
   need(Array.isArray(data.toolchain), 'toolchain[]');
   for (const t of data.toolchain) {
     need(
-      isStr(t.version) && isStr(t.url) && isStr(t.published_at) && Array.isArray(t.bootstrap),
+      isStr(t.version) && isStr(t.url) && isStr(t.published_at) && typeof t.signed === 'boolean' && Array.isArray(t.bootstrap),
       `toolchain ${t.version}`,
     );
     for (const b of t.bootstrap) {

@@ -375,6 +375,7 @@ async function collectFactory(
         url: d.release.html_url,
         published_at: d.release.published_at,
         prerelease: d.release.prerelease,
+        signed: d.release.assets.some((a) => /^SHA256SUMS.*\.asc$/.test(a.name)),
       },
     });
   }
@@ -488,6 +489,7 @@ async function collectToolchain(
       version: rel.tag_name.replace(/^v/, ''),
       url: rel.html_url,
       published_at: rel.published_at,
+      signed: rel.assets.some((a) => /^SHA256SUMS.*\.asc$/.test(a.name)),
       bootstrap,
     });
   }

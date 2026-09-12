@@ -56,6 +56,11 @@ const R_DESC = `Every release of the ${view.engine} ${view.lang}${view.flavor ? 
                 {relAgeFrom(g.release.published_at)}
                 {g.release.prerelease && <span class="chip chip-pre" title="prerelease">pre</span>}
                 {g.isLatest && <span class="chip chip-flowed">current</span>}
+                {g.release.signed && (
+                  <span class="chip chip-signed" title="signed checksums bundle (.asc)">
+                    signed
+                  </span>
+                )}
               </span>
               <PinSnippet
                 snippets={[

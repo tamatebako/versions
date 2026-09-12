@@ -30,7 +30,7 @@ const good: VersionsData = {
       capabilities: null,
       exe: { url: 'https://x/y', size: 1, downloads: 2, sha256: null },
       image: null,
-      release: { tag: 'v0.16.22', url: 'https://x', published_at: NOW.toISOString(), prerelease: false },
+      release: { tag: 'v0.16.22', url: 'https://x', published_at: NOW.toISOString(), prerelease: false, signed: false },
     },
   ],
   payloads: [
@@ -52,7 +52,7 @@ const good: VersionsData = {
       ],
     },
   ],
-  toolchain: [{ version: '2.5.0', url: 'https://x', published_at: NOW.toISOString(), bootstrap: [{ triplet: 'macos-arm64', bytes: 1_554_816 }] }],
+  toolchain: [{ version: '2.5.0', url: 'https://x', published_at: NOW.toISOString(), signed: false, bootstrap: [{ triplet: 'macos-arm64', bytes: 1_554_816 }] }],
 };
 
 test('validate accepts schema-shaped data', () => {
