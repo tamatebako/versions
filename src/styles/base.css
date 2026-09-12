@@ -187,6 +187,12 @@ a.chip-cap:hover {
   border-color: var(--tv-accent);
   color: var(--tv-accent-text);
 }
+  .chip-signed {
+    background: var(--tv-chip-ok-bg);
+    border-color: var(--tv-chip-ok-border);
+    color: var(--tv-chip-ok-ink);
+  }
+
 .chip-flowed {
   border-style: solid;
   border-color: var(--tv-accent);

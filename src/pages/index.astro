@@ -138,6 +138,11 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
                         <a class="line-release" href={g.rows[0]?.release.url}>
                           {g.latestTebako}
                         </a>
+                        {g.rows[0]?.release.signed && (
+                          <span class="chip chip-signed" title="signed checksums bundle (.asc)">
+                            signed
+                          </span>
+                        )}
                       </div>
                       {g.rows[0] && (
                         <PinSnippet
@@ -185,7 +190,7 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
                           {r.exe ? mib(r.exe.size) : '—'} / {r.image ? mib(r.image.size) : '—'}
                         </td>
                         <td class="num">{r.exe ? r.exe.downloads.toLocaleString('en-US') : '—'}</td>
-                        <td class="num" title={r.release.published_at}>{relAgeFrom(r.release.published_at)}</td>
+                        <td class="num" title={r.release.published_at.slice(0, 10)}>{relAgeFrom(r.release.published_at)}</td>
                         <td class="mono sha" title={r.exe?.sha256 ?? 'no checksum fetched for older releases'}>
                           {r.exe?.sha256 ? r.exe.sha256.slice(0, 12) : '—'}
                         </td>
@@ -318,14 +323,21 @@ const toolchainBadge = v.toolchain[0] ? badge('tebako toolchain', v.toolchain[0]
                     class="toolchain-row"
                     data-filter={[t.version, ...t.bootstrap.map((b) => b.triplet)].join(' ')}
                   >
-                    <td class="mono">{t.version}</td>
+                    <td class="mono">
+                      {t.version}{' '}
+                      {t.signed && (
+                        <span class="chip chip-signed" title="signed checksums bundle (.asc)">
+                          signed
+                        </span>
+                      )}
+                    </td>
                     <td class="num">{relAgeFrom(t.published_at)}</td>
                     <td>
                       <span class="gate-meters">
                         {t.bootstrap.map((b) => (
                           <span
                             class="gate-meter"
-                            title={`${b.triplet}: ${b.bytes.toLocaleString('en-US')} of ${BOOTSTRAP_MAX_BYTES.toLocaleString('en-US')} bytes (${((b.bytes / BOOTSTRAP_MAX_BYTES) * 100).toFixed(0)}% of gate)`}
+                            title={`${((b.bytes / BOOTSTRAP_MAX_BYTES) * 100).toFixed(0)}% of gate`}
                           >
                             <span class="gate-meter-label">
                               {b.triplet.replace('linux-gnu-', 'gnu-').replace('linux-musl-', 'musl-')}

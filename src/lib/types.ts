@@ -13,6 +13,9 @@ export interface RuntimeReleaseRef {
   url: string;
   published_at: string;
   prerelease: boolean;
+  // The release carries a signed checksums bundle (SHA256SUMS*.asc) — the
+  // trust chain's verifiability marker, observed on the release assets.
+  signed: boolean;
 }
 
 export interface RuntimeRow {
@@ -66,6 +69,7 @@ export interface ToolchainRow {
   version: string;
   url: string;
   published_at: string;
+  signed: boolean;
   bootstrap: BootstrapAsset[];
 }
 
