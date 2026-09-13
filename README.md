@@ -26,5 +26,3 @@ from a published source or derived with the rule shown on the page.
 Sources are declared in `sources.yaml`. A source that fails after retries
 (3×, 5/15/45 s backoff) fails the build loudly — a half-catalog is never
 deployed.
-
-The execution contract lives in `TODO.impl/` (plans 00–05).
